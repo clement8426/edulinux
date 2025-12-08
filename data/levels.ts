@@ -237,23 +237,28 @@ Ligne 5: données diverses`
     title: "SSH - Connexion distante",
     difficulty: 'beginner',
     category: "SSH",
-    objective: "Comprendre la syntaxe SSH",
-    description: "SSH connecte à une machine distante : `ssh user@host -p port`",
-    commands: ['ssh'],
+    objective: "Se connecter à un serveur distant avec SSH",
+    description: "Un serveur distant t'attend. Trouve les informations de connexion et utilise la syntaxe SSH : `ssh user@host -p port`",
+    commands: ['ssh', 'cat'],
     hints: [
-      "Syntaxe : ssh utilisateur@serveur -p numero_port",
-      "Exemple : ssh admin@192.168.1.10 -p 2222"
+      "Lis le fichier instructions.txt pour trouver les informations",
+      "Syntaxe SSH : ssh utilisateur@serveur -p numero_port",
+      "L'utilisateur, le serveur et le port sont dans instructions.txt"
     ],
     fileSystem: {
-      'instructions.txt': `Pour te connecter au serveur distant :
-- Utilisateur : student
-- Serveur : terminal.edulinux.com
-- Port : 2222`
+      'instructions.txt': `🔐 Informations de connexion SSH
+
+Pour te connecter au serveur de backup :
+- Utilisateur : admin
+- Serveur : backup.edulinux.local
+- Port : 2222
+
+⚠️ Attention : utilise le bon port, pas le port par défaut (22) !`
     },
     validation: [
-      { type: 'command', value: 'ssh student@terminal.edulinux.com -p 2222', description: 'Se connecter en SSH' }
+      { type: 'command', value: 'ssh admin@backup.edulinux.local -p 2222', description: 'Se connecter en SSH avec les bonnes informations' }
     ],
-    story: "🌐 Tu dois te connecter à un serveur distant. Utilise les bonnes informations !"
+    story: "🌐 Un serveur de backup distant contient des données importantes. Tu dois t'y connecter, mais les informations de connexion sont dans un fichier. Trouve-les et connecte-toi !"
   },
 
   // 🟡 Niveaux 11-20 : Manipulation & Automatisation

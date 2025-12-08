@@ -60,62 +60,79 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-4 flex justify-between items-center">
+        <div className="mb-6 flex justify-between items-center">
           <Link 
             href="/levels"
-            className="text-blue-400 hover:text-blue-300"
+            className="group flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors font-semibold"
           >
-            ← Tous les niveaux
+            <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
+            <span>Tous les niveaux</span>
           </Link>
-          <div className="text-gray-400 text-sm">
-            Niveau {levelId} / {levels.length}
+          <div className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 px-4 py-2 rounded-full border border-cyan-500/30">
+            <span className="text-cyan-300 text-sm font-semibold">
+              Niveau {levelId} / {levels.length}
+            </span>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-4 h-[calc(100vh-120px)]">
+        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
           {/* Left Panel - Level Info */}
-          <div className="lg:col-span-1 bg-gray-800 rounded-lg p-6 border border-gray-700 overflow-y-auto">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold rounded-full w-12 h-12 flex items-center justify-center text-xl">
+          <div className="lg:col-span-1 bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-2xl p-6 border border-cyan-500/20 shadow-2xl overflow-y-auto">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="bg-gradient-to-br from-cyan-500 via-purple-500 to-pink-500 text-white font-bold rounded-2xl w-16 h-16 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/50">
                 {levelId}
               </div>
               <div>
-                <div className="text-sm text-gray-400">
+                <div className="text-xs text-cyan-300 font-semibold mb-1">
                   {getDifficultyEmoji(level.difficulty)} {level.difficulty.toUpperCase()}
                 </div>
-                <h1 className="text-2xl font-bold text-white">{level.title}</h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">
+                  {level.title}
+                </h1>
               </div>
             </div>
 
-            <div className="mb-6">
-              <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-4 mb-4">
-                <h3 className="text-blue-300 font-semibold mb-2">🎯 Objectif</h3>
-                <p className="text-white text-sm">{level.objective}</p>
+            <div className="mb-6 space-y-4">
+              <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl p-5 backdrop-blur-sm shadow-lg">
+                <h3 className="text-cyan-300 font-bold mb-3 flex items-center gap-2">
+                  <span className="text-xl">🎯</span>
+                  <span>Objectif</span>
+                </h3>
+                <p className="text-white text-sm leading-relaxed">{level.objective}</p>
               </div>
 
-              <div className="bg-gray-900 rounded-lg p-4 mb-4">
-                <h3 className="text-gray-300 font-semibold mb-2">📖 Description</h3>
-                <p className="text-gray-400 text-sm">{level.description}</p>
+              <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 rounded-xl p-5 backdrop-blur-sm">
+                <h3 className="text-gray-200 font-bold mb-3 flex items-center gap-2">
+                  <span className="text-xl">📖</span>
+                  <span>Description</span>
+                </h3>
+                <p className="text-gray-300 text-sm leading-relaxed">{level.description}</p>
               </div>
 
               {level.story && (
-                <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-4 mb-4">
-                  <h3 className="text-purple-300 font-semibold mb-2">📜 Contexte</h3>
-                  <p className="text-gray-300 text-sm italic">{level.story}</p>
+                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-5 backdrop-blur-sm shadow-lg">
+                  <h3 className="text-purple-300 font-bold mb-3 flex items-center gap-2">
+                    <span className="text-xl">📜</span>
+                    <span>Contexte</span>
+                  </h3>
+                  <p className="text-gray-200 text-sm italic leading-relaxed">{level.story}</p>
                 </div>
               )}
             </div>
 
-            <div className="mb-4">
-              <h3 className="text-gray-300 font-semibold mb-2">⚡ Commandes clés</h3>
+            <div className="mb-6">
+              <h3 className="text-cyan-300 font-bold mb-3 flex items-center gap-2">
+                <span className="text-xl">⚡</span>
+                <span>Commandes clés</span>
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {level.commands.map((cmd, i) => (
                   <span 
                     key={i}
-                    className="bg-gray-900 text-cyan-400 text-sm px-3 py-1 rounded font-mono border border-gray-700"
+                    className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 text-sm px-4 py-2 rounded-lg font-mono border border-cyan-500/30 font-semibold shadow-md"
                   >
                     {cmd}
                   </span>
@@ -124,12 +141,15 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
             </div>
 
             <div>
-              <h3 className="text-gray-300 font-semibold mb-2">✅ Validations</h3>
-              <ul className="space-y-2">
+              <h3 className="text-green-300 font-bold mb-3 flex items-center gap-2">
+                <span className="text-xl">✅</span>
+                <span>Validations</span>
+              </h3>
+              <ul className="space-y-3">
                 {level.validation.map((rule, i) => (
-                  <li key={i} className="text-gray-400 text-sm flex items-start gap-2">
-                    <span className="text-yellow-500">→</span>
-                    <span>{rule.description || rule.value}</span>
+                  <li key={i} className="text-gray-300 text-sm flex items-start gap-3 bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
+                    <span className="text-yellow-400 font-bold text-lg">→</span>
+                    <span className="flex-1">{rule.description || rule.value}</span>
                   </li>
                 ))}
               </ul>
@@ -145,39 +165,41 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
 
       {/* Success Modal */}
       {showSuccess && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full border-2 border-green-500 animate-bounce-in">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 max-w-md w-full border-2 border-green-500/50 shadow-2xl shadow-green-500/20 animate-bounce-in">
             <div className="text-center">
-              <div className="text-6xl mb-4">🎉</div>
-              <h2 className="text-3xl font-bold text-white mb-2">Niveau Complété !</h2>
-              <p className="text-gray-300 mb-6">
-                Tu as maîtrisé : <span className="text-green-400 font-semibold">{level.title}</span>
+              <div className="text-7xl mb-6 animate-bounce">🎉</div>
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent mb-3">
+                Niveau Complété !
+              </h2>
+              <p className="text-gray-300 mb-6 text-lg">
+                Tu as maîtrisé : <span className="text-cyan-400 font-bold">{level.title}</span>
               </p>
               
-              <div className="bg-gray-900 rounded-lg p-4 mb-6">
-                <div className="text-yellow-400 font-bold text-2xl mb-2">+100 XP</div>
+              <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl p-6 mb-6 border border-yellow-500/30">
+                <div className="text-yellow-400 font-bold text-3xl mb-3">+100 XP</div>
                 {levelId === 10 && (
-                  <div className="text-blue-400">🔑 Badge débloqué : SSH Master</div>
+                  <div className="text-cyan-400 font-semibold text-lg">🔑 Badge débloqué : SSH Master</div>
                 )}
                 {levelId === 20 && (
-                  <div className="text-purple-400">⚙️ Badge débloqué : Automation Expert</div>
+                  <div className="text-purple-400 font-semibold text-lg">⚙️ Badge débloqué : Automation Expert</div>
                 )}
                 {levelId === 30 && (
-                  <div className="text-red-400">👑 Badge débloqué : Terminal Warrior</div>
+                  <div className="text-red-400 font-semibold text-lg">👑 Badge débloqué : Terminal Warrior</div>
                 )}
               </div>
 
               <div className="flex gap-4">
                 <button
                   onClick={() => router.push('/levels')}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold"
+                  className="flex-1 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg"
                 >
                   📋 Niveaux
                 </button>
                 {levelId < levels.length && (
                   <button
                     onClick={goToNextLevel}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold"
+                    className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-purple-500/50"
                   >
                     Suivant →
                   </button>

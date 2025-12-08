@@ -37,45 +37,48 @@ export default function LevelsPage() {
   const progressPercentage = (progress.completedLevels.length / levels.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Link 
             href="/"
-            className="inline-flex items-center text-blue-400 hover:text-blue-300 mb-4"
+            className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 mb-6 font-semibold transition-colors group"
           >
-            ← Retour à l'accueil
+            <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
+            <span>Retour à l'accueil</span>
           </Link>
           
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-5xl md:text-6xl font-black mb-6 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             🎮 Niveaux EduLinux
           </h1>
 
           {/* Progress Bar */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-white font-semibold">Ta Progression</span>
-              <span className="text-blue-400 font-bold">
+          <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-2xl p-8 border border-cyan-500/20 shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-white font-bold text-xl">Ta Progression</span>
+              <span className="text-cyan-400 font-black text-xl">
                 {progress.completedLevels.length} / {levels.length} niveaux
               </span>
             </div>
             
-            <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
+            <div className="w-full bg-gray-800/50 rounded-full h-6 mb-6 border border-gray-700/50 overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-600 h-4 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 h-6 rounded-full transition-all duration-500 shadow-lg flex items-center justify-end pr-2"
                 style={{ width: `${progressPercentage}%` }}
-              ></div>
+              >
+                <span className="text-white text-xs font-bold">{Math.round(progressPercentage)}%</span>
+              </div>
             </div>
 
-            <div className="flex gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-yellow-400">⭐</span>
-                <span className="text-gray-300">{progress.totalXP} XP</span>
+            <div className="flex gap-6 text-base">
+              <div className="flex items-center gap-2 bg-yellow-500/20 px-4 py-2 rounded-lg border border-yellow-500/30">
+                <span className="text-yellow-400 text-xl">⭐</span>
+                <span className="text-yellow-300 font-bold">{progress.totalXP} XP</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-purple-400">🏆</span>
-                <span className="text-gray-300">{progress.badges.length} badges</span>
+              <div className="flex items-center gap-2 bg-purple-500/20 px-4 py-2 rounded-lg border border-purple-500/30">
+                <span className="text-purple-400 text-xl">🏆</span>
+                <span className="text-purple-300 font-bold">{progress.badges.length} badges</span>
               </div>
             </div>
           </div>
@@ -93,12 +96,12 @@ export default function LevelsPage() {
                 onClick={() => unlocked && router.push(`/levels/${level.id}`)}
                 disabled={!unlocked}
                 className={`
-                  relative bg-gray-800 border-2 rounded-lg p-6 text-left transition-all
+                  relative bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl border-2 rounded-2xl p-6 text-left transition-all shadow-lg
                   ${unlocked 
-                    ? 'border-gray-700 hover:border-blue-500 hover:shadow-lg hover:scale-105 cursor-pointer' 
-                    : 'border-gray-800 opacity-50 cursor-not-allowed'
+                    ? 'border-cyan-500/30 hover:border-cyan-400 hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-105 cursor-pointer' 
+                    : 'border-gray-800 opacity-40 cursor-not-allowed'
                   }
-                  ${completed ? 'bg-gradient-to-br from-gray-800 to-green-900/30' : ''}
+                  ${completed ? 'bg-gradient-to-br from-green-900/30 to-emerald-900/30 border-green-500/50' : ''}
                 `}
               >
                 {/* Level Number Badge */}
