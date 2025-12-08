@@ -216,21 +216,22 @@ Ligne 5: données diverses`
     title: "Décodage simple",
     difficulty: 'beginner',
     category: "Encodage",
-    objective: "Décoder du base64",
-    description: "Le base64 est un encodage. Pour décoder : `echo 'texte' | base64 -d`",
-    commands: ['base64', 'echo'],
+    objective: "Décoder un message en base64",
+    description: "Le base64 est un encodage. Pour décoder : `cat fichier.txt | base64 -d`. Le résultat décodé s'affichera après la commande.",
+    commands: ['base64', 'cat'],
     hints: [
-      "cat encoded.txt pour voir le contenu",
-      "cat encoded.txt | base64 -d pour décoder"
+      "cat encoded.txt pour voir le contenu encodé",
+      "cat encoded.txt | base64 -d pour décoder et voir le message",
+      "Le message décodé s'affichera après la commande"
     ],
     fileSystem: {
       'encoded.txt': 'VEVSTUlOQUxfREVDT0RFUl8yMDI0',
-      'info.txt': 'Le fichier encoded.txt contient un message en base64'
+      'info.txt': 'Le fichier encoded.txt contient un message secret encodé en base64. Décode-le pour découvrir le mot de passe !'
     },
     validation: [
-      { type: 'command', value: 'base64 -d', description: 'Utiliser base64 -d pour décoder' }
+      { type: 'command', value: 'base64 -d', description: 'Utiliser base64 -d pour décoder le message' }
     ],
-    story: "🔐 Un message est encodé en base64. Décode-le pour révéler le secret !"
+    story: "🔐 Un message secret est encodé en base64 dans encoded.txt. Décode-le avec base64 -d pour révéler le mot de passe caché !"
   },
   {
     id: 10,

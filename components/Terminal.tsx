@@ -245,14 +245,41 @@ export default function Terminal({ level, onSuccess }: TerminalProps) {
           const content = level.fileSystem[filename];
           if (typeof content === 'string') {
             try {
-              return [atob(content)];
+              const decoded = atob(content);
+              return [
+                decoded,
+                '',
+                '✅ Message décodé avec succès !',
+                `📝 Texte décodé : "${decoded}"`
+              ];
             } catch {
               return ['base64: invalid input'];
             }
           }
         }
       }
-      return ['base64: pipe content to decode'];
+      // Si on fait base64 -d directement sur un fichier
+      if (trimmedCmd.includes('base64 -d ') && !trimmedCmd.includes('|')) {
+        const parts = trimmedCmd.split('base64 -d ');
+        if (parts.length > 1) {
+          const filename = parts[1].trim();
+          const content = level.fileSystem[filename];
+          if (typeof content === 'string') {
+            try {
+              const decoded = atob(content);
+              return [
+                decoded,
+                '',
+                '✅ Message décodé avec succès !',
+                `📝 Texte décodé : "${decoded}"`
+              ];
+            } catch {
+              return ['base64: invalid input'];
+            }
+          }
+        }
+      }
+      return ['base64: pipe content to decode (ex: cat file.txt | base64 -d)'];
     }
 
     // ssh
