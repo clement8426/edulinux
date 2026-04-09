@@ -18,7 +18,7 @@ export default function ScenariosPage() {
   return (
     <div className="min-h-screen bg-[#0a0e17] text-white font-mono">
       {/* Nav */}
-      <nav className="border-b border-white/5 px-6 md:px-16 py-4 flex items-center justify-between">
+      <nav className="border-b border-white/5 px-4 sm:px-6 md:px-16 py-4 flex items-center justify-between">
         <Link href="/" className="text-[#a3e635] font-bold tracking-widest text-sm">EDULINUX</Link>
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <Link href="/levels" className="hover:text-white transition-colors">niveaux</Link>
@@ -26,7 +26,7 @@ export default function ScenariosPage() {
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-6 md:px-16 py-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-16 py-8 md:py-10">
         {/* Header */}
         <div className="mb-10">
           <p className="text-[#a3e635] text-xs tracking-[0.3em] uppercase mb-2">Mode avancé</p>
@@ -89,7 +89,7 @@ export default function ScenariosPage() {
                   <div className="absolute top-0 left-0 h-0.5 bg-[#a3e635] transition-all" style={{ width: `${pct}%` }} />
                 )}
 
-                <div className="flex items-start gap-5">
+                <div className="flex items-start gap-3 sm:gap-5">
                   {/* Status indicator */}
                   <div className={`w-10 h-10 rounded border flex items-center justify-center text-sm flex-shrink-0 ${
                     completed ? 'border-[#a3e635]/40 text-[#a3e635]' : 'border-white/8 text-gray-600'

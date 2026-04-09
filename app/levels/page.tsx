@@ -51,7 +51,7 @@ export default function LevelsPage() {
   return (
     <div className="min-h-screen bg-[#0a0e17] text-white font-mono">
       {/* Nav */}
-      <nav className="border-b border-white/5 px-6 md:px-16 py-4 flex items-center justify-between">
+      <nav className="border-b border-white/5 px-4 sm:px-6 md:px-16 py-4 flex items-center justify-between">
         <Link href="/" className="text-[#a3e635] font-bold tracking-widest text-sm">EDULINUX</Link>
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <span className="text-white font-bold">niveaux</span>
@@ -59,16 +59,18 @@ export default function LevelsPage() {
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-6 md:px-16 py-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-16 py-8 md:py-10">
         {/* Header */}
-        <div className="flex items-end justify-between mb-8">
+        <div className="flex items-start sm:items-end justify-between mb-6 md:mb-8 gap-4">
           <div>
             <p className="text-[#a3e635] text-xs tracking-[0.3em] uppercase mb-1">Parcours</p>
-            <h1 className="text-3xl font-bold text-white">Niveaux</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Niveaux</h1>
           </div>
-          <div className="text-right text-sm">
-            <span className="text-white font-bold">{progress.completedLevels.length}</span>
-            <span className="text-gray-600">/{levels.length} complétés</span>
+          <div className="text-right text-sm flex-shrink-0">
+            <div>
+              <span className="text-white font-bold">{progress.completedLevels.length}</span>
+              <span className="text-gray-600">/{levels.length}</span>
+            </div>
             <div className="text-[#a3e635] font-bold">{progress.totalXP} XP</div>
           </div>
         </div>
@@ -111,7 +113,7 @@ export default function LevelsPage() {
               </div>
 
               {/* Level grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                 {chLevels.map(level => {
                   const unlocked = isLevelUnlocked(level.id);
                   const completed = isLevelCompleted(level.id);
@@ -158,7 +160,7 @@ export default function LevelsPage() {
         })}
 
         {/* Scenario CTA */}
-        <div className="border border-white/8 rounded p-6 flex items-center gap-6">
+        <div className="border border-white/8 rounded p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
           <div className="flex-1">
             <p className="text-[#a3e635] text-xs tracking-widest uppercase mb-1">Mode avancé</p>
             <h3 className="text-white font-bold">Scénarios de mise en situation</h3>

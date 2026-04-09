@@ -38,30 +38,30 @@ export default function Home() {
     <div className="min-h-screen bg-[#0a0e17] text-white font-mono">
 
       {/* Nav */}
-      <nav className="border-b border-white/5 px-6 md:px-16 py-4 flex items-center justify-between">
+      <nav className="border-b border-white/5 px-4 sm:px-6 md:px-16 py-4 flex items-center justify-between">
         <span className="text-[#a3e635] font-bold tracking-widest text-sm">EDULINUX</span>
-        <div className="flex items-center gap-6 text-sm text-gray-500">
-          <Link href="/levels" className="hover:text-white transition-colors">niveaux</Link>
-          <Link href="/scenarios" className="hover:text-white transition-colors">scénarios</Link>
-          <Link href="/levels" className="border border-[#a3e635]/50 text-[#a3e635] hover:bg-[#a3e635] hover:text-black px-4 py-1.5 rounded transition-all font-bold">
+        <div className="flex items-center gap-3 sm:gap-6 text-sm text-gray-500">
+          <Link href="/levels" className="hover:text-white transition-colors hidden sm:inline">niveaux</Link>
+          <Link href="/scenarios" className="hover:text-white transition-colors hidden sm:inline">scénarios</Link>
+          <Link href="/levels" className="border border-[#a3e635]/50 text-[#a3e635] hover:bg-[#a3e635] hover:text-black px-3 sm:px-4 py-1.5 rounded transition-all font-bold text-xs sm:text-sm">
             démarrer
           </Link>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 md:px-16 pt-24 pb-20">
-        <p className="text-[#a3e635] text-xs tracking-[0.3em] uppercase mb-6">Plateforme d&apos;entraînement Linux</p>
-        <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6 text-white tracking-tight">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 md:px-16 pt-14 sm:pt-20 md:pt-24 pb-14 sm:pb-20">
+        <p className="text-[#a3e635] text-xs tracking-[0.3em] uppercase mb-4 sm:mb-6">Plateforme d&apos;entraînement Linux</p>
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-tight mb-5 sm:mb-6 text-white tracking-tight">
           Apprends Linux<br />
           <span className="text-gray-500">comme un</span> professionnel
         </h1>
-        <p className="text-gray-400 text-lg max-w-xl mb-10 leading-relaxed">
+        <p className="text-gray-400 text-base sm:text-lg max-w-xl mb-8 sm:mb-10 leading-relaxed">
           {totalLevels} niveaux progressifs — terminal, système, réseau, forensic, CTF.
           Tout dans le navigateur, vrai shell bash, pas de compte requis.
         </p>
 
-        <div className="flex items-center gap-4 mb-20">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-14 sm:mb-20">
           <Link
             href="/levels"
             className="bg-[#a3e635] text-black font-bold px-6 py-3 rounded text-sm hover:bg-[#bef264] transition-colors"
@@ -93,7 +93,7 @@ export default function Home() {
       </section>
 
       {/* Parcours */}
-      <section className="max-w-5xl mx-auto px-6 md:px-16 pb-20">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 md:px-16 pb-14 sm:pb-20">
         <p className="text-gray-600 text-xs tracking-[0.3em] uppercase mb-2">Parcours</p>
         <h2 className="text-2xl font-bold text-white mb-8">
           {TRACKS.length} chapitres, des bases au CTF
@@ -121,7 +121,7 @@ export default function Home() {
       </section>
 
       {/* Scenarios */}
-      <section className="max-w-5xl mx-auto px-6 md:px-16 pb-20">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 md:px-16 pb-14 sm:pb-20">
         <div className="border border-white/8 rounded p-8 md:p-12">
           <div className="grid md:grid-cols-2 gap-10 items-start">
             <div>
@@ -170,13 +170,13 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 px-6 md:px-16 py-6 flex items-center justify-between">
+      <footer className="border-t border-white/5 px-4 sm:px-6 md:px-16 py-5 sm:py-6 flex items-center justify-between gap-4">
         <span className="text-[#a3e635] font-bold text-xs tracking-widest">EDULINUX</span>
         <div className="flex gap-6 text-gray-600 text-xs">
           <Link href="/levels" className="hover:text-white transition-colors">niveaux</Link>
           <Link href="/scenarios" className="hover:text-white transition-colors">scénarios</Link>
         </div>
-        <span className="text-gray-700 text-xs">Duolingo × OverTheWire Bandit</span>
+        <span className="text-gray-700 text-xs hidden sm:inline">Duolingo × OverTheWire Bandit</span>
       </footer>
     </div>
   );
