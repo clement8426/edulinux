@@ -2,6 +2,8 @@
 
 Une plateforme interactive pour maîtriser Linux et le terminal, inspirée de **Duolingo** et **OverTheWire Bandit**.
 
+**Vision long terme** (Linux système, réseau, intro forensic, scénarios « mise en situation ») : voir **[`VISION.md`](./VISION.md)**.
+
 ![EduLinux](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8?style=for-the-badge&logo=tailwind-css)
@@ -59,6 +61,7 @@ Voir [`QUICKSTART.md`](./QUICKSTART.md) pour un guide complet en 5 minutes.
 
 | Document | Description |
 |----------|-------------|
+| [`VISION.md`](./VISION.md) | 🧭 Vision du projet : objectifs pédagogiques, scénarios futurs, forensic & réseau |
 | [`QUICKSTART.md`](./QUICKSTART.md) | ⚡ Démarrage en 5 minutes |
 | [`GUIDE.md`](./GUIDE.md) | 📖 Guide utilisateur complet |
 | [`FEATURES.md`](./FEATURES.md) | ✨ Détails des fonctionnalités |

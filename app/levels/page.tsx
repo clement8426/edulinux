@@ -1,197 +1,174 @@
 'use client';
 
-import { levels, getDifficultyColor, getDifficultyEmoji } from '@/data/levels';
+import { levels, getDifficultyEmoji } from '@/data/levels';
 import { useProgress } from '@/hooks/useProgress';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const CHAPTERS = [
+  { range: [1,  10], label: 'Terminal & SSH',       tag: '01–10' },
+  { range: [11, 20], label: 'Flux & Scripts',       tag: '11–20' },
+  { range: [21, 30], label: 'Sécurité',             tag: '21–30' },
+  { range: [31, 40], label: 'Système Linux',        tag: '31–40' },
+  { range: [41, 50], label: 'Réseau',               tag: '41–50' },
+  { range: [51, 60], label: 'Forensic Linux',       tag: '51–60' },
+  { range: [61, 70], label: 'Reconnaissance',       tag: '61–70' },
+  { range: [71, 80], label: 'Hacking & PrivEsc',   tag: '71–80' },
+  { range: [81, 90], label: 'Bash Avancé',          tag: '81–90' },
+  { range: [91,100], label: 'CTF Challenges',       tag: '91–100' },
+];
+
+const DIFF_COLOR: Record<string, string> = {
+  beginner:     'text-[#a3e635]',
+  intermediate: 'text-yellow-400',
+  advanced:     'text-red-400',
+};
+
+const BADGE_META: Record<string, { icon: string; label: string }> = {
+  ssh_master:        { icon: '🔑', label: 'SSH Master' },
+  automation_expert: { icon: '⚙️', label: 'Automation Expert' },
+  terminal_warrior:  { icon: '👑', label: 'Terminal Warrior' },
+  sysadmin:          { icon: '🖥️', label: 'Sysadmin' },
+  network_guru:      { icon: '🛰️', label: 'Network Guru' },
+  forensic_analyst:  { icon: '🔬', label: 'Forensic Analyst' },
+  incident_responder: { icon: '🚨', label: 'Incident Responder' },
+  web_investigator:   { icon: '🕵️', label: 'Web Investigator' },
+  network_mapper:     { icon: '🗺️', label: 'Network Mapper' },
+  recon_specialist:   { icon: '🎯', label: 'Recon Specialist' },
+  privesc_master:     { icon: '⬆️', label: 'PrivEsc Master' },
+  ir_expert:          { icon: '🔥', label: 'IR Expert' },
+  network_pentester:  { icon: '🔌', label: 'Network Pentester' },
+  hacker:             { icon: '💀', label: 'Hacker' },
+  script_master:      { icon: '📜', label: 'Script Master' },
+  ctf_champion:       { icon: '🏆', label: 'CTF Champion' },
+};
+
 export default function LevelsPage() {
   const { progress, isLevelUnlocked, isLevelCompleted } = useProgress();
   const router = useRouter();
-
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      'Bases': '📚',
-      'Navigation': '🗺️',
-      'Lecture': '📖',
-      'Permissions': '🔒',
-      'Recherche': '🔍',
-      'Encodage': '🔐',
-      'SSH': '🌐',
-      'Flux': '🔀',
-      'Analyse': '📊',
-      'Glob': '🌟',
-      'Environnement': '🎯',
-      'Scripts': '📜',
-      'Archives': '📦',
-      'Réseau': '🛰️',
-      'Édition': '✏️',
-      'Patterns': '🎯',
-      'Système': '⚙️',
-      'Sécurité': '🔓',
-      'CTF': '🏆'
-    };
-    return icons[category] || '📌';
-  };
-
-  const progressPercentage = (progress.completedLevels.length / levels.length) * 100;
+  const pct = Math.round((progress.completedLevels.length / levels.length) * 100);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#0a0e17] text-white font-mono">
+      {/* Nav */}
+      <nav className="border-b border-white/5 px-6 md:px-16 py-4 flex items-center justify-between">
+        <Link href="/" className="text-[#a3e635] font-bold tracking-widest text-sm">EDULINUX</Link>
+        <div className="flex items-center gap-4 text-xs text-gray-500">
+          <span className="text-white font-bold">niveaux</span>
+          <Link href="/scenarios" className="hover:text-white transition-colors">scénarios</Link>
+        </div>
+      </nav>
+
+      <div className="max-w-6xl mx-auto px-6 md:px-16 py-10">
         {/* Header */}
-        <div className="mb-8">
-          <Link 
-            href="/"
-            className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 mb-6 font-semibold transition-colors group"
-          >
-            <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
-            <span>Retour à l'accueil</span>
-          </Link>
-          
-          <h1 className="text-5xl md:text-6xl font-black mb-6 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            🎮 Niveaux EduLinux
-          </h1>
-
-          {/* Progress Bar */}
-          <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-2xl p-8 border border-cyan-500/20 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-white font-bold text-xl">Ta Progression</span>
-              <span className="text-cyan-400 font-black text-xl">
-                {progress.completedLevels.length} / {levels.length} niveaux
-              </span>
-            </div>
-            
-            <div className="w-full bg-gray-800/50 rounded-full h-6 mb-6 border border-gray-700/50 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 h-6 rounded-full transition-all duration-500 shadow-lg flex items-center justify-end pr-2"
-                style={{ width: `${progressPercentage}%` }}
-              >
-                <span className="text-white text-xs font-bold">{Math.round(progressPercentage)}%</span>
-              </div>
-            </div>
-
-            <div className="flex gap-6 text-base">
-              <div className="flex items-center gap-2 bg-yellow-500/20 px-4 py-2 rounded-lg border border-yellow-500/30">
-                <span className="text-yellow-400 text-xl">⭐</span>
-                <span className="text-yellow-300 font-bold">{progress.totalXP} XP</span>
-              </div>
-              <div className="flex items-center gap-2 bg-purple-500/20 px-4 py-2 rounded-lg border border-purple-500/30">
-                <span className="text-purple-400 text-xl">🏆</span>
-                <span className="text-purple-300 font-bold">{progress.badges.length} badges</span>
-              </div>
-            </div>
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <p className="text-[#a3e635] text-xs tracking-[0.3em] uppercase mb-1">Parcours</p>
+            <h1 className="text-3xl font-bold text-white">Niveaux</h1>
+          </div>
+          <div className="text-right text-sm">
+            <span className="text-white font-bold">{progress.completedLevels.length}</span>
+            <span className="text-gray-600">/{levels.length} complétés</span>
+            <div className="text-[#a3e635] font-bold">{progress.totalXP} XP</div>
           </div>
         </div>
 
-        {/* Levels Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {levels.map((level) => {
-            const unlocked = isLevelUnlocked(level.id);
-            const completed = isLevelCompleted(level.id);
-
-            return (
-              <button
-                key={level.id}
-                onClick={() => unlocked && router.push(`/levels/${level.id}`)}
-                disabled={!unlocked}
-                className={`
-                  relative bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl border-2 rounded-2xl p-6 text-left transition-all shadow-lg
-                  ${unlocked 
-                    ? 'border-cyan-500/30 hover:border-cyan-400 hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-105 cursor-pointer' 
-                    : 'border-gray-800 opacity-40 cursor-not-allowed'
-                  }
-                  ${completed ? 'bg-gradient-to-br from-green-900/30 to-emerald-900/30 border-green-500/50' : ''}
-                `}
-              >
-                {/* Level Number Badge */}
-                <div className="absolute -top-3 -left-3 bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
-                  {level.id}
-                </div>
-
-                {/* Completed Badge */}
-                {completed && (
-                  <div className="absolute -top-3 -right-3 bg-green-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
-                    ✓
-                  </div>
-                )}
-
-                {/* Locked Badge */}
-                {!unlocked && (
-                  <div className="absolute -top-3 -right-3 bg-gray-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
-                    🔒
-                  </div>
-                )}
-
-                {/* Content */}
-                <div className="mt-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">{getCategoryIcon(level.category)}</span>
-                    <span className={`text-sm font-semibold ${getDifficultyColor(level.difficulty)}`}>
-                      {getDifficultyEmoji(level.difficulty)} {level.difficulty.toUpperCase()}
-                    </span>
-                  </div>
-
-                  <h3 className="text-white font-bold text-lg mb-2">
-                    {level.title}
-                  </h3>
-
-                  <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-                    {level.objective}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1">
-                    {level.commands.slice(0, 3).map((cmd, i) => (
-                      <span 
-                        key={i}
-                        className="bg-gray-900 text-blue-400 text-xs px-2 py-1 rounded font-mono"
-                      >
-                        {cmd}
-                      </span>
-                    ))}
-                    {level.commands.length > 3 && (
-                      <span className="text-gray-500 text-xs px-2 py-1">
-                        +{level.commands.length - 3}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+        {/* Progress bar */}
+        <div className="w-full bg-white/5 rounded-full h-1 mb-10">
+          <div
+            className="h-1 rounded-full bg-[#a3e635] transition-all duration-700"
+            style={{ width: `${pct}%` }}
+          />
         </div>
 
-        {/* Badges Section */}
+        {/* Badges */}
         {progress.badges.length > 0 && (
-          <div className="mt-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white mb-4">🏆 Tes Badges</h2>
-            <div className="flex gap-4">
-              {progress.badges.includes('ssh_master') && (
-                <div className="bg-gray-900 rounded-lg p-4 text-center">
-                  <div className="text-4xl mb-2">🔑</div>
-                  <div className="text-white font-semibold">SSH Master</div>
-                  <div className="text-xs text-gray-500">Niveau 10</div>
-                </div>
-              )}
-              {progress.badges.includes('automation_expert') && (
-                <div className="bg-gray-900 rounded-lg p-4 text-center">
-                  <div className="text-4xl mb-2">⚙️</div>
-                  <div className="text-white font-semibold">Automation Expert</div>
-                  <div className="text-xs text-gray-500">Niveau 20</div>
-                </div>
-              )}
-              {progress.badges.includes('terminal_warrior') && (
-                <div className="bg-gray-900 rounded-lg p-4 text-center">
-                  <div className="text-4xl mb-2">👑</div>
-                  <div className="text-white font-semibold">Terminal Warrior</div>
-                  <div className="text-xs text-gray-500">Niveau 30</div>
-                </div>
-              )}
-            </div>
+          <div className="mb-10 flex flex-wrap gap-2">
+            {progress.badges.map(b => {
+              const m = BADGE_META[b];
+              if (!m) return null;
+              return (
+                <span key={b} className="flex items-center gap-1.5 border border-white/10 bg-white/4 rounded px-3 py-1.5 text-xs text-gray-300">
+                  {m.icon} {m.label}
+                </span>
+              );
+            })}
           </div>
         )}
+
+        {/* Chapters */}
+        {CHAPTERS.map(ch => {
+          const chLevels = levels.filter(l => l.id >= ch.range[0] && l.id <= ch.range[1]);
+          const done = chLevels.filter(l => isLevelCompleted(l.id)).length;
+
+          return (
+            <div key={ch.tag} className="mb-10">
+              {/* Chapter header */}
+              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/5">
+                <span className="text-[#a3e635] text-xs font-bold tracking-widest">{ch.tag}</span>
+                <span className="text-white text-sm font-bold">{ch.label}</span>
+                <span className="ml-auto text-gray-600 text-xs">{done}/{chLevels.length}</span>
+              </div>
+
+              {/* Level grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                {chLevels.map(level => {
+                  const unlocked = isLevelUnlocked(level.id);
+                  const completed = isLevelCompleted(level.id);
+
+                  return (
+                    <button
+                      key={level.id}
+                      onClick={() => unlocked && router.push(`/levels/${level.id}`)}
+                      disabled={!unlocked}
+                      className={`
+                        text-left border rounded p-3.5 transition-all
+                        ${unlocked && !completed
+                          ? 'border-white/8 bg-[#0f1520] hover:border-[#a3e635]/40 hover:bg-[#111827] cursor-pointer'
+                          : ''}
+                        ${completed
+                          ? 'border-[#a3e635]/30 bg-[#a3e635]/5 cursor-pointer'
+                          : ''}
+                        ${!unlocked
+                          ? 'border-white/4 bg-[#0c1018] opacity-40 cursor-not-allowed'
+                          : ''}
+                      `}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-600 text-xs font-bold">
+                          {String(level.id).padStart(2, '0')}
+                        </span>
+                        <span className="text-xs">
+                          {completed
+                            ? <span className="text-[#a3e635]">✓</span>
+                            : !unlocked
+                            ? <span className="text-gray-700">○</span>
+                            : <span className={DIFF_COLOR[level.difficulty]}>{getDifficultyEmoji(level.difficulty)}</span>
+                          }
+                        </span>
+                      </div>
+                      <p className="text-white text-xs font-bold leading-tight mb-2">{level.title}</p>
+                      <p className="text-gray-600 text-xs font-mono">{level.commands[0]}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Scenario CTA */}
+        <div className="border border-white/8 rounded p-6 flex items-center gap-6">
+          <div className="flex-1">
+            <p className="text-[#a3e635] text-xs tracking-widest uppercase mb-1">Mode avancé</p>
+            <h3 className="text-white font-bold">Scénarios de mise en situation</h3>
+            <p className="text-gray-500 text-xs mt-1">Forensic, réseau, réponse à incident — débloqués après 10 niveaux.</p>
+          </div>
+          <Link href="/scenarios" className="border border-[#a3e635]/40 text-[#a3e635] hover:bg-[#a3e635] hover:text-black px-4 py-2 rounded text-xs font-bold transition-all flex-shrink-0">
+            Accéder →
+          </Link>
+        </div>
       </div>
     </div>
   );
 }
-
