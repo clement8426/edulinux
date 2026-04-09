@@ -30,7 +30,9 @@ function createFiles(baseDir, fileSystem) {
         // Garantit un \n final pour que le prompt s'affiche sur une nouvelle ligne
         const content = value.endsWith('\n') ? value : value + '\n';
         fs.writeFileSync(fullPath, content, 'utf8');
-        if (key.endsWith('.sh') || key.endsWith('.py') || key.endsWith('.pl')) {
+        // Scripts et fichiers dans bin/ sont rendus exécutables
+        const inBin = cleanKey.startsWith('bin/') || cleanKey === 'bin';
+        if (key.endsWith('.sh') || key.endsWith('.py') || key.endsWith('.pl') || inBin) {
           fs.chmodSync(fullPath, 0o755);
         }
       } else if (typeof value === 'object' && value !== null) {
@@ -223,6 +225,8 @@ app.prepare().then(() => {
         `PROMPT_COMMAND='__ec=$(history 1 | sed "s/^ *[0-9]* *//"); printf "\\033]777;%s\\007" "$__ec"; history -a'`,
         // pwd affiche ~ à la place du répertoire temporaire (plus lisible pour les débutants)
         `pwd() { command pwd | sed "s|${workDir}|~|g"; }`,
+        // ~/bin en tête de PATH : permet aux niveaux de fournir des commandes simulées (ex: ssh)
+        `export PATH="$HOME/bin:$PATH"`,
       ].join('\n') + '\n', 'utf8');
 
       const args = process.platform === 'win32'

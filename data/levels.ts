@@ -380,7 +380,32 @@ Pour te connecter au serveur de backup :
 - Serveur : backup.edulinux.local
 - Port : 2222
 
-⚠️ Attention : utilise le bon port, pas le port par défaut (22) !`
+⚠️ Attention : utilise le bon port, pas le port par défaut (22) !`,
+      'bin/ssh': `#!/bin/bash
+# EduLinux SSH simulator — connexion réaliste simulée
+HOST="" PORT=22 USER="student" NEXT_PORT=0
+for arg in "$@"; do
+  if [ "$NEXT_PORT" = "1" ]; then PORT="$arg"; NEXT_PORT=0
+  elif [ "$arg" = "-p" ]; then NEXT_PORT=1
+  elif echo "$arg" | grep -q "@"; then USER="\${arg%%@*}"; HOST="\${arg##*@}"
+  fi
+done
+printf "ssh: connecting to %s (port %s) as %s...\\n" "\${HOST:-server}" "\${PORT}" "\${USER}"
+sleep 0.8
+printf "The authenticity of host '[%s]:%s' can't be established.\\n" "\${HOST}" "\${PORT}"
+printf "ED25519 key fingerprint is SHA256:xK2m9nPqR7vL4tY1uW8eJ3bC6dF0gH5i.\\n"
+printf "Warning: Permanently added '[%s]:%s' (ED25519) to the list of known hosts.\\n" "\${HOST}" "\${PORT}"
+sleep 0.4
+printf "\\033[32m✔ Connexion SSH établie avec succès !\\033[0m\\n"
+printf "\\n"
+printf "  ╔══════════════════════════════════════╗\\n"
+printf "  ║   EduLinux Backup Server v2.4.1      ║\\n"
+printf "  ║   Hostname : backup-server            ║\\n"
+printf "  ║   Adresse  : 10.10.10.50:%s          ║\\n" "\${PORT}"
+printf "  ║   Dernier login : Lun 15 Jan 03:25   ║\\n"
+printf "  ╚══════════════════════════════════════╝\\n"
+printf "\\n"
+printf "%s@backup-server:~\\\$ [session fermée — simulateur SSH]\\n" "\${USER}"`,
     },
     validation: [
       { type: 'command', value: 'ssh admin@backup.edulinux.local -p 2222', description: 'Se connecter en SSH avec les bonnes informations' }
