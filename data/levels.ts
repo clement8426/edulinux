@@ -167,24 +167,146 @@ export const levels: Level[] = [
     title: "Recherche dans fichier",
     difficulty: 'beginner',
     category: "Recherche",
-    objective: "Utiliser grep pour chercher",
-    description: "`grep` cherche du texte dans un fichier. Syntaxe : `grep 'mot' fichier.txt`",
-    commands: ['grep', 'cat'],
+    objective: "Utiliser grep pour trouver le mot de passe dans un long fichier de log",
+    description: "`grep 'mot' fichier` cherche et affiche uniquement les lignes contenant ce mot. Indispensable quand le fichier est trop long pour être lu en entier.",
+    commands: ['grep', 'cat', 'wc'],
     hints: [
-      "grep 'password' fichier.txt",
-      "grep trouve les lignes contenant le mot"
+      "`wc -l log.txt` pour voir combien de lignes fait le fichier.",
+      "`grep 'password' log.txt` pour extraire uniquement la ligne qui contient le mot de passe.",
+      "`cat log.txt` fonctionne aussi mais tu vas devoir faire défiler 150 lignes..."
     ],
     fileSystem: {
-      'log.txt': `Ligne 1: information système
-Ligne 2: erreur de connexion
-Ligne 3: password: GREP_WARRIOR_2024
-Ligne 4: fin du log
-Ligne 5: données diverses`
+      'log.txt': `[2024-01-15 00:00:01] INFO  kernel: system boot sequence initiated
+[2024-01-15 00:00:02] INFO  kernel: loading modules... ok
+[2024-01-15 00:00:03] INFO  systemd: starting network manager
+[2024-01-15 00:00:04] INFO  networkd: interface eth0 up
+[2024-01-15 00:00:05] INFO  networkd: DHCP lease acquired 192.168.1.42
+[2024-01-15 00:00:06] INFO  sshd: listening on 0.0.0.0 port 22
+[2024-01-15 00:00:07] INFO  cron: daemon started
+[2024-01-15 00:00:08] INFO  rsyslog: logging to /var/log/syslog
+[2024-01-15 00:00:09] INFO  auditd: audit daemon started
+[2024-01-15 00:00:10] INFO  kernel: all modules loaded
+[2024-01-15 00:01:02] INFO  sshd: accepted connection from 10.0.0.5
+[2024-01-15 00:01:03] INFO  sshd: user admin authenticated
+[2024-01-15 00:01:05] INFO  bash: session opened for user admin
+[2024-01-15 00:01:10] INFO  sudo: admin ran /usr/bin/apt-get update
+[2024-01-15 00:01:45] INFO  apt: reading package lists
+[2024-01-15 00:01:46] INFO  apt: 0 packages upgraded, 0 newly installed
+[2024-01-15 00:02:01] INFO  cron: running daily backup script
+[2024-01-15 00:02:03] INFO  backup: /home compressed → /var/backup/home.tar.gz
+[2024-01-15 00:02:04] INFO  backup: /etc compressed → /var/backup/etc.tar.gz
+[2024-01-15 00:02:05] INFO  backup: completed successfully, 2 archives
+[2024-01-15 00:03:12] WARN  diskd: /dev/sda1 usage at 78%
+[2024-01-15 00:03:13] INFO  diskd: threshold not reached, no action
+[2024-01-15 00:04:00] INFO  ntpd: time synchronized with pool.ntp.org
+[2024-01-15 00:04:01] INFO  ntpd: offset -0.0023s, stratum 2
+[2024-01-15 00:05:00] INFO  monit: all services running normally
+[2024-01-15 00:05:01] INFO  monit: cpu 4%, mem 31%, load 0.12
+[2024-01-15 00:06:30] INFO  sshd: connection closed by 10.0.0.5
+[2024-01-15 00:06:31] INFO  bash: session closed for user admin
+[2024-01-15 00:10:00] INFO  cron: running health check
+[2024-01-15 00:10:01] INFO  health: web service responding on :8080
+[2024-01-15 00:10:02] INFO  health: database responding on :5432
+[2024-01-15 00:10:03] INFO  health: redis responding on :6379
+[2024-01-15 00:15:00] INFO  logrotate: rotating /var/log/nginx/access.log
+[2024-01-15 00:15:01] INFO  logrotate: rotation complete, 7 files kept
+[2024-01-15 00:20:00] INFO  cron: running cleanup script
+[2024-01-15 00:20:02] INFO  cleanup: removed 14 tmp files older than 7 days
+[2024-01-15 00:20:03] INFO  cleanup: freed 234 MB in /tmp
+[2024-01-15 00:25:11] WARN  sshd: failed login attempt for user root from 185.220.101.5
+[2024-01-15 00:25:12] WARN  sshd: failed login attempt for user root from 185.220.101.5
+[2024-01-15 00:25:13] WARN  sshd: failed login attempt for user admin from 185.220.101.5
+[2024-01-15 00:25:14] WARN  fail2ban: banning 185.220.101.5 for 600s
+[2024-01-15 00:30:00] INFO  cron: running certificate check
+[2024-01-15 00:30:01] INFO  certbot: certificate expires in 47 days
+[2024-01-15 00:30:02] INFO  certbot: no renewal needed
+[2024-01-15 00:35:00] INFO  monit: all services running normally
+[2024-01-15 00:40:00] INFO  ntpd: time synchronized with pool.ntp.org
+[2024-01-15 00:45:00] INFO  cron: running db snapshot
+[2024-01-15 00:45:02] INFO  postgres: snapshot /var/db/snap-20240115.sql created
+[2024-01-15 00:45:03] INFO  postgres: snapshot size 1.2 GB
+[2024-01-15 00:50:00] INFO  monit: all services running normally
+[2024-01-15 00:55:00] INFO  logd: flushing buffer to disk
+[2024-01-15 01:00:00] INFO  cron: hourly tasks complete
+[2024-01-15 01:00:01] INFO  monit: cpu 3%, mem 29%, load 0.08
+[2024-01-15 01:05:42] INFO  sshd: accepted connection from 10.0.0.8
+[2024-01-15 01:05:43] INFO  sshd: user deploy authenticated via key
+[2024-01-15 01:05:50] INFO  bash: session opened for user deploy
+[2024-01-15 01:06:00] INFO  deploy: starting deployment v2.4.1
+[2024-01-15 01:06:05] INFO  deploy: pulling docker image app:2.4.1
+[2024-01-15 01:06:45] INFO  deploy: image pulled successfully
+[2024-01-15 01:06:46] INFO  deploy: stopping container app:2.4.0
+[2024-01-15 01:06:48] INFO  deploy: container stopped
+[2024-01-15 01:06:49] INFO  deploy: starting container app:2.4.1
+[2024-01-15 01:06:52] INFO  deploy: container started, health check pending
+[2024-01-15 01:07:05] INFO  deploy: health check passed
+[2024-01-15 01:07:06] INFO  deploy: deployment v2.4.1 successful
+[2024-01-15 01:07:07] INFO  nginx: reloading configuration
+[2024-01-15 01:07:08] INFO  nginx: reload complete, 0 errors
+[2024-01-15 01:07:10] INFO  bash: session closed for user deploy
+[2024-01-15 01:07:11] INFO  sshd: connection closed by 10.0.0.8
+[2024-01-15 01:10:00] INFO  monit: all services running normally
+[2024-01-15 01:15:00] INFO  monit: cpu 8%, mem 33%, load 0.21
+[2024-01-15 01:20:00] INFO  diskd: /dev/sda1 usage at 79%
+[2024-01-15 01:25:00] INFO  cron: running session cleanup
+[2024-01-15 01:25:01] INFO  cleanup: expired 42 user sessions
+[2024-01-15 01:30:00] INFO  ntpd: time synchronized with pool.ntp.org
+[2024-01-15 01:35:00] INFO  monit: all services running normally
+[2024-01-15 01:40:00] INFO  logd: rotating in-memory buffer
+[2024-01-15 01:45:00] INFO  cron: running api key audit
+[2024-01-15 01:45:01] INFO  audit: 14 active api keys found
+[2024-01-15 01:45:02] INFO  audit: 2 keys unused for >90 days, flagged for review
+[2024-01-15 01:50:00] INFO  monit: all services running normally
+[2024-01-15 01:55:00] INFO  logd: flushing buffer to disk
+[2024-01-15 02:00:00] INFO  cron: hourly tasks complete
+[2024-01-15 02:00:01] INFO  monit: cpu 4%, mem 30%, load 0.10
+[2024-01-15 02:05:00] INFO  rsyslog: buffer flush complete
+[2024-01-15 02:10:00] INFO  diskd: /dev/sda1 usage still at 79%
+[2024-01-15 02:15:33] INFO  app: config reload triggered by SIGHUP
+[2024-01-15 02:15:34] INFO  app: loading /etc/app/config.yml
+[2024-01-15 02:15:35] INFO  app: password: GREP_WARRIOR_2024
+[2024-01-15 02:15:36] INFO  app: database_host: db.internal
+[2024-01-15 02:15:37] INFO  app: cache_ttl: 300s
+[2024-01-15 02:15:38] INFO  app: config reload complete
+[2024-01-15 02:20:00] INFO  monit: all services running normally
+[2024-01-15 02:25:00] INFO  ntpd: time synchronized with pool.ntp.org
+[2024-01-15 02:30:00] INFO  cron: running integrity check
+[2024-01-15 02:30:02] INFO  integrity: checksums verified for 1847 files
+[2024-01-15 02:30:03] INFO  integrity: 0 anomalies detected
+[2024-01-15 02:35:00] INFO  monit: all services running normally
+[2024-01-15 02:40:00] INFO  diskd: /dev/sda1 usage at 79%
+[2024-01-15 02:45:00] INFO  cron: running log archive
+[2024-01-15 02:45:01] INFO  logarchive: compressing logs older than 30 days
+[2024-01-15 02:45:04] INFO  logarchive: archived 2.3 GB to /var/archive/
+[2024-01-15 02:50:00] INFO  monit: all services running normally
+[2024-01-15 02:55:00] INFO  logd: flushing buffer to disk
+[2024-01-15 03:00:00] INFO  cron: hourly tasks complete
+[2024-01-15 03:00:01] INFO  monit: cpu 3%, mem 28%, load 0.07
+[2024-01-15 03:05:00] INFO  rsyslog: all buffers clean
+[2024-01-15 03:10:22] WARN  diskd: /dev/sda1 usage at 80%, threshold reached
+[2024-01-15 03:10:23] WARN  diskd: sending alert to admin@company.internal
+[2024-01-15 03:10:24] INFO  alertd: email queued for delivery
+[2024-01-15 03:15:00] INFO  monit: all services running normally
+[2024-01-15 03:20:00] INFO  ntpd: time synchronized with pool.ntp.org
+[2024-01-15 03:25:00] INFO  cron: running user audit
+[2024-01-15 03:25:01] INFO  audit: 7 active user accounts
+[2024-01-15 03:25:02] INFO  audit: last login admin 2024-01-15 00:01:03
+[2024-01-15 03:25:03] INFO  audit: last login deploy 2024-01-15 01:05:43
+[2024-01-15 03:30:00] INFO  monit: all services running normally
+[2024-01-15 03:35:00] INFO  logd: rotating in-memory buffer
+[2024-01-15 03:40:00] INFO  cron: running metrics snapshot
+[2024-01-15 03:40:01] INFO  metrics: requests_total=184203 errors_total=12 uptime=99.99%
+[2024-01-15 03:45:00] INFO  monit: all services running normally
+[2024-01-15 03:50:00] INFO  logd: flushing buffer to disk
+[2024-01-15 03:55:00] INFO  cron: running final nightly cleanup
+[2024-01-15 03:55:01] INFO  cleanup: temp files removed
+[2024-01-15 03:55:02] INFO  cleanup: all tasks complete
+[2024-01-15 03:59:59] INFO  logd: nightly log rotation complete — 152 entries written`
     },
     validation: [
-      { type: 'command', value: 'grep password log.txt', description: 'Chercher "password" dans log.txt' }
+      { type: 'command', value: 'grep password log.txt', description: 'Trouver la ligne contenant "password" dans log.txt' }
     ],
-    story: "🔍 Un énorme fichier log contient le mot de passe quelque part. Trouve-le avec grep !"
+    story: "🔍 Un fichier de log de 152 lignes contient le mot de passe quelque part. Le lire en entier serait long — utilise grep pour trouver directement ce qui t'intéresse."
   },
   {
     id: 8,
