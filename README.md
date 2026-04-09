@@ -1,226 +1,189 @@
-# 🎮 EduLinux - Apprends le Terminal
+# EduLinux
 
-Une plateforme interactive pour maîtriser Linux et le terminal, inspirée de **Duolingo** et **OverTheWire Bandit**.
+Interactive Linux learning platform with a real embedded terminal. Inspired by HackTheBox and OverTheWire/Bandit.
 
-**Vision long terme** (Linux système, réseau, intro forensic, scénarios « mise en situation ») : voir **[`VISION.md`](./VISION.md)**.
+---
 
-![EduLinux](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8?style=for-the-badge&logo=tailwind-css)
-![Status](https://img.shields.io/badge/Status-Production%20Ready-success?style=for-the-badge)
+## Overview
 
-## 🚀 Démarrage Rapide
+EduLinux runs a real `bash` shell in the browser — no simulation, no fake output. Each exercise spins up an isolated filesystem, validates commands by intercepting what bash actually executed (not keystrokes), and gives the user full freedom to explore before advancing.
 
-**Le serveur est déjà lancé !** Ouvre ton navigateur :
-```
-👉 http://localhost:3000
-```
+**100 levels · 7 scenarios · real terminal · real validation**
 
-Voir [`QUICKSTART.md`](./QUICKSTART.md) pour un guide complet en 5 minutes.
+---
 
-## ✨ Fonctionnalités
+## Stack
 
-- 🎯 **30 niveaux progressifs** - Du débutant à l'expert
-- 💻 **Terminal simulé** - Environnement Linux interactif
-- 🏆 **Système de progression** - XP, badges et déblocages
-- 📚 **Apprentissage guidé** - Indices et validations automatiques
-- 🎨 **Interface moderne** - Design inspiré de Duolingo
-- 🔐 **Sécurité & Réseau** - SSH, cryptographie, CTF
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19 + TypeScript 5 + Tailwind CSS 4 |
+| Terminal | xterm.js (`@xterm/xterm`) |
+| Shell | node-pty (real bash via PTY) |
+| Transport | WebSocket (`ws`) |
+| Server | Custom Node.js HTTP + WS server |
+| Tests | Jest + ts-jest |
 
-## 🎓 Parcours d'apprentissage
+---
 
-### 🟢 Niveaux 1-10 : Bases Terminal & SSH
-- Navigation (ls, cd, pwd)
-- Lecture de fichiers (cat, less)
-- Recherche (grep, find)
-- Permissions basiques (chmod)
-- Encodage base64
-- Connexions SSH
-
-### 🟡 Niveaux 11-20 : Manipulation & Automatisation
-- Redirections & Pipes (>, >>, |)
-- Analyse de texte (wc, sort, uniq)
-- Wildcards (*, ?)
-- Variables d'environnement
-- Scripts Bash
-- Compression (tar, gzip)
-- Téléchargement (curl, wget)
-
-### 🔴 Niveaux 21-30 : Techniques Avancées
-- Scan de ports
-- Sudo & privilèges
-- Clés SSH (ssh-keygen)
-- Hashing (md5, sha256)
-- Expressions régulières
-- Gestion des processus
-- Transferts SCP
-- Binaires SUID
-- **Mission finale CTF-style**
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [`VISION.md`](./VISION.md) | 🧭 Vision du projet : objectifs pédagogiques, scénarios futurs, forensic & réseau |
-| [`QUICKSTART.md`](./QUICKSTART.md) | ⚡ Démarrage en 5 minutes |
-| [`GUIDE.md`](./GUIDE.md) | 📖 Guide utilisateur complet |
-| [`FEATURES.md`](./FEATURES.md) | ✨ Détails des fonctionnalités |
-| [`COMMANDS.md`](./COMMANDS.md) | 📟 Référence des commandes |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 🤝 Guide de contribution |
-| [`PROJECT_SUMMARY.md`](./PROJECT_SUMMARY.md) | 📊 Résumé technique |
-| [`CHANGELOG.md`](./CHANGELOG.md) | 📝 Historique des versions |
-
-## 🚀 Installation
+## Getting Started
 
 ```bash
-# Le projet est déjà installé et le serveur tourne ! ✅
-# Pour redémarrer le serveur :
-cd /Users/soleadmaci9/test/edulinux
-npm run dev
+# Install dependencies
+npm install
 
-# Build de production
+# Start dev server (Next.js + WebSocket on port 3000)
+npm run dev
+```
+
+If port 3000 is already in use:
+
+```bash
+lsof -ti :3000 | xargs kill -9 2>/dev/null; npm run dev
+```
+
+Build for production:
+
+```bash
 npm run build
 npm start
 ```
 
-## 🛠️ Technologies
+---
 
-- **Next.js 15** - Framework React avec App Router
-- **TypeScript** - Typage statique
-- **Tailwind CSS** - Styling utilitaire
-- **React Hooks** - Gestion d'état moderne
-- **LocalStorage** - Sauvegarde de progression
-
-## 📱 Structure du projet
+## Architecture
 
 ```
 edulinux/
+├── server.js              # Custom Node.js server (Next.js + WebSocket/PTY)
 ├── app/
-│   ├── page.tsx              # Page d'accueil
+│   ├── page.tsx           # Home
 │   ├── levels/
-│   │   ├── page.tsx          # Liste des niveaux
-│   │   └── [id]/
-│   │       └── page.tsx      # Page de niveau individuel
-│   ├── layout.tsx            # Layout principal
-│   └── globals.css           # Styles globaux
+│   │   ├── page.tsx       # Level browser
+│   │   └── [id]/page.tsx  # Level runner
+│   └── scenarios/
+│       ├── page.tsx       # Scenario browser
+│       └── [id]/page.tsx  # Scenario runner
 ├── components/
-│   └── Terminal.tsx          # Composant terminal simulé
+│   └── RealTerminal.tsx   # xterm.js component + WS client
 ├── data/
-│   └── levels.ts             # Définition des 30 niveaux
+│   ├── levels.ts          # All 100 levels (content + validation rules)
+│   └── scenarios.ts       # All 7 scenarios
 ├── hooks/
-│   └── useProgress.ts        # Hook de progression utilisateur
-└── README.md
+│   └── useProgress.ts     # Progress tracking (localStorage)
+└── __tests__/
+    ├── validation.test.ts # matchesRule() unit tests
+    ├── levels.test.ts     # Data integrity checks
+    └── scenarios.test.ts  # Scenario data integrity
 ```
 
-## 🎯 Utilisation
+### How the terminal works
 
-1. **Démarrer** - Lance l'application et clique sur "Commencer l'Aventure"
-2. **Choisir un niveau** - Sélectionne un niveau débloqué
-3. **Lire l'objectif** - Comprends ce qui est demandé
-4. **Taper des commandes** - Utilise le terminal simulé
-5. **Valider** - Complete toutes les validations
-6. **Progresser** - Débloque le niveau suivant et gagne des badges !
+1. Browser connects to `ws://localhost:3000/pty`
+2. Server spawns a real `bash` process via `node-pty` in an isolated temp directory
+3. Level filesystem is written to disk from `data/levels.ts`
+4. A custom `.bashrc` injects `PROMPT_COMMAND` that sends each executed command back to the server via an invisible OSC escape sequence (`\x1b]777;CMD\x07`)
+5. The server strips the OSC sequence from PTY output before forwarding to xterm.js — it is invisible to the user
+6. `matchesRule()` validates the intercepted command against the level's rules
+7. When all objectives are complete, the user types `ok` to advance
 
-## 🏆 Badges
-
-- 🔑 **SSH Master** - Complète le niveau 10
-- ⚙️ **Automation Expert** - Complète le niveau 20
-- 👑 **Terminal Warrior** - Complète le niveau 30
-
-## 🎮 Commandes disponibles
-
-Le terminal simule les commandes Linux essentielles :
-
-- `echo` - Afficher du texte
-- `ls` - Lister fichiers
-- `cd` - Changer de dossier
-- `pwd` - Afficher le chemin actuel
-- `cat` - Lire un fichier
-- `grep` - Rechercher dans un fichier
-- `find` - Trouver des fichiers
-- `chmod` - Modifier les permissions
-- `base64` - Encoder/décoder
-- `ssh` - Connexion distante
-- `export` - Variables d'environnement
-- `tar` - Extraction d'archives
-- `wget/curl` - Téléchargement
-- `scan` - Scanner des ports (custom)
-- `sudo` - Privilèges élevés
-- `ssh-keygen` - Générer clés SSH
-- `md5/sha256` - Hashing
-- `sed` - Substitution de texte
-- `ps/kill` - Gestion des processus
-- `scp` - Copie distante
-
-## 🎨 Captures d'écran
-
-### Page d'accueil
-Design moderne avec présentation des fonctionnalités
-
-### Liste des niveaux
-Grille de niveaux avec progression visuelle
-
-### Terminal interactif
-Simulation réaliste avec validation en temps réel
-
-## 🔮 Améliorations futures
-
-- [ ] Niveaux 31-50 (exploitation, réseau avancé, forensic)
-- [ ] Système de classement multijoueur
-- [ ] Éditeur de niveaux personnalisés
-- [ ] Support multilingue
-- [ ] Mode compétition chronométré
-- [ ] Intégration avec vrais containers Docker
-- [ ] Certification de compétences
-
-## 🎯 État du Projet
-
-**Version** : 1.0.0 ✅  
-**Statut** : Production Ready  
-**Niveaux** : 30/30 complétés  
-**Serveur** : 🟢 Actif sur http://localhost:3000
-
-## 📊 Statistiques
-
-- **Lignes de code** : ~3500
-- **Commandes supportées** : 20+
-- **Documentation** : 2000+ lignes
-- **Tests** : Build réussi ✅
-
-## 🔮 Prochaines Étapes
-
-1. ✅ ~~Développer les 30 premiers niveaux~~
-2. ⏳ Tests utilisateurs
-3. ⏳ Déploiement public
-4. 📋 Version 1.1 : Niveaux 31-40
-
-Voir [`CHANGELOG.md`](./CHANGELOG.md) pour plus de détails.
-
-## 📝 Licence
-
-Ce projet est sous licence MIT.
-
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! Consulte [`CONTRIBUTING.md`](./CONTRIBUTING.md) pour :
-- Ajouter des niveaux
-- Améliorer le code
-- Signaler des bugs
-- Proposer des fonctionnalités
-
-## 👨‍💻 Auteur
-
-Créé avec ❤️ pour rendre l'apprentissage du terminal accessible et fun !
-
-## 🌟 Liens Utiles
-
-- **Demo locale** : http://localhost:3000
-- **Documentation** : Voir fichiers .md du projet
-- **Version** : 1.0.0 (Décembre 2025)
+This approach captures **what bash actually executed** — not raw keystrokes — so tab-completion, aliases, and multi-segment paths all validate correctly.
 
 ---
 
-**🐧 Apprends, Pratique, Maîtrise Linux avec EduLinux !**
+## Content
 
-*Commence maintenant sur http://localhost:3000* 🚀 
-# edulinux
+### Levels (100 total)
+
+| Chapter | Levels | Topics |
+|---|---|---|
+| Linux Fondamentaux | 1–10 | Navigation, fichiers, permissions, redirections |
+| Système | 11–20 | Processus, services, variables, scripting |
+| Réseau | 21–30 | SSH, netstat, curl, analyse de trafic |
+| Administration | 31–40 | Users, cron, logs, sudo |
+| Sécurité Système | 41–50 | SUID, capabilities, ACL, audit |
+| Forensic Linux | 51–60 | Analyse de logs, artefacts, réponse à incident |
+| Reconnaissance | 61–70 | nmap, dig, DNS, OSINT, web enumeration |
+| Hacking & PrivEsc | 71–80 | Exploitation, privilege escalation, persistence |
+| Bash Avancé | 81–90 | Boucles, fonctions, regex, awk, sed, trap |
+| CTF Challenges | 91–100 | Stéganographie, encodages, hash, Docker escape |
+
+### Scenarios (7 missions)
+
+Real-world missions requiring chained knowledge — no hand-holding.
+
+| # | Title | Category |
+|---|---|---|
+| 1 | Incident SSH : Brute-Force & Accès Non Autorisé | Forensic |
+| 2 | Serveur Web Compromis : Webshell & Exfiltration | Forensic |
+| 3 | Cartographie Réseau : Découverte d'un Réseau Interne | Réseau |
+| 4 | Pentest Phase 1 : Reconnaissance complète | Pentest |
+| 5 | Privilege Escalation : De user à root | Hacking |
+| 6 | Forensic Avancé : Infrastructure Compromise | Forensic |
+| 7 | Pentest Avancé : VLAN, DMZ & Pivot | Pentest |
+
+---
+
+## Validation
+
+Commands are validated by `matchesRule()` in `server.js`. Key behaviors:
+
+- **Quotes are stripped** — `echo "hello"` and `echo hello` are equivalent
+- **Trailing slashes ignored** — `cd documents/` validates `cd documents`
+- **`cd` destination matching** — `cd work` validates `cd home/user/documents/work` (step-by-step or one-shot)
+- **`ls` flags order-independent** — `ls -al` and `ls -l -a` both validate `ls -la`
+- **Redirect/pipe operators** — rule `echo >` validates any `echo ... > file`; rule `|` validates any piped command; rule `>>` validates append redirections
+- **Pipe chain support** — rule `grep` validates `cat auth.log | grep Failed`
+- **Bare commands** — `pwd`, `id`, `whoami`, etc. validate without arguments; other commands require at least one argument
+
+---
+
+## Tests
+
+```bash
+npm test                # Run all tests
+npm run test:watch      # Watch mode
+npm run test:coverage   # With coverage report
+```
+
+98 tests across 3 suites:
+- `validation.test.ts` — matchesRule() edge cases (44 tests)
+- `levels.test.ts` — data integrity for all 100 levels
+- `scenarios.test.ts` — data integrity for all 7 scenarios
+
+---
+
+## Adding a Level
+
+Add an entry to the `levels` array in `data/levels.ts`:
+
+```typescript
+{
+  id: 101,
+  title: "Your Level Title",
+  difficulty: 'beginner' | 'intermediate' | 'advanced',
+  category: "Category",
+  objective: "One-line goal",
+  description: "Markdown-supported description.",
+  commands: ['cmd1', 'cmd2'],
+  hints: ["Hint 1", "Hint 2"],
+  fileSystem: {
+    'readme.txt': 'File content here',
+    'subdir': {
+      'nested.txt': 'Nested content'
+    }
+  },
+  validation: [
+    { type: 'command', value: 'cat readme.txt', description: 'Read the file' }
+  ],
+  story: "Narrative context for the level."
+}
+```
+
+Validation types: `command` (check executed command), `fileContent` (check file content), `fileExists` (check file existence).
+
+---
+
+## License
+
+MIT

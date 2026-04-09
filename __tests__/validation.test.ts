@@ -278,6 +278,47 @@ describe('matchesRule — commandes spécifiques EduLinux', () => {
   });
 });
 
+describe('matchesRule — opérateurs de redirection et pipe (niveaux 11, 12)', () => {
+  test('règle pure "|" : valide toute commande contenant un pipe', () => {
+    const rule = { type: 'command' as const, value: '|' };
+    expect(matchesRule('cat fichier | grep motif', rule)).toBe(true);
+    expect(matchesRule('ls -la | wc -l', rule)).toBe(true);
+    // Sans pipe : ne doit pas valider
+    expect(matchesRule('cat fichier', rule)).toBe(false);
+  });
+
+  test('règle pure ">>" : valide toute commande contenant >>', () => {
+    const rule = { type: 'command' as const, value: '>>' };
+    expect(matchesRule('echo ligne2 >> log.txt', rule)).toBe(true);
+    expect(matchesRule('who >> triage.sh', rule)).toBe(true);
+    // > simple ne suffit pas
+    expect(matchesRule('echo test > file.txt', rule)).toBe(false);
+    // Sans redirection : ne doit pas valider
+    expect(matchesRule('echo test', rule)).toBe(false);
+  });
+
+  test('règle pure ">" : valide toute commande contenant > (y compris >>)', () => {
+    const rule = { type: 'command' as const, value: '>' };
+    expect(matchesRule('echo hello > test.txt', rule)).toBe(true);
+    expect(matchesRule('echo hello >> test.txt', rule)).toBe(true); // >> contient >
+    expect(matchesRule('echo hello', rule)).toBe(false);
+  });
+
+  test('règle "echo >" : echo avec redirection (niveau 11 / 59)', () => {
+    const rule = { type: 'command' as const, value: 'echo >' };
+    // Cas typiques avec contenu varié
+    expect(matchesRule("echo 'hello' > test.txt", rule)).toBe(true);
+    expect(matchesRule('echo hello > test.txt', rule)).toBe(true);
+    expect(matchesRule("echo '#!/bin/bash' > triage.sh", rule)).toBe(true);
+    // Append >> doit aussi valider (contient >)
+    expect(matchesRule('echo hello >> test.txt', rule)).toBe(true);
+    // echo sans redirection : ne doit pas valider
+    expect(matchesRule('echo hello', rule)).toBe(false);
+    // Autre commande avec > : ne doit pas valider (ne commence pas par echo)
+    expect(matchesRule('cat file > out.txt', rule)).toBe(false);
+  });
+});
+
 describe('matchesRule — commandes forensic', () => {
   test('grep sur auth.log', () => {
     const rule = { type: 'command' as const, value: 'grep Failed auth.log' };
