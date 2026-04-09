@@ -71,11 +71,38 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
   const sW    = hl ? hl.w + PAD * 2 : 0;
   const sH    = hl ? hl.h + PAD * 2 : 0;
 
-  // Tooltip placement: prefer below, fallback above, last resort center
-  let tTop = sTop + sH + 20;
-  if (tTop + TOOLTIP_H > win.h - 16) tTop = sTop - TOOLTIP_H - 20;
-  if (tTop < 16) tTop = win.h / 2 - TOOLTIP_H / 2;
-  const tLeft = Math.max(16, Math.min(hl ? sLeft : win.w / 2 - TOOLTIP_W / 2, win.w - TOOLTIP_W - 16));
+  // Tooltip placement strategy:
+  // - Element in left half → tooltip to the right (terminal zone), vertically centered on element
+  // - Element in right half → tooltip to the left, or below/above if no room
+  // - No element → center of screen
+  let tTop: number;
+  let tLeft: number;
+
+  if (!hl) {
+    tTop  = win.h / 2 - TOOLTIP_H / 2;
+    tLeft = win.w / 2 - TOOLTIP_W / 2;
+  } else {
+    const elemCenterX = sLeft + sW / 2;
+    const inLeftHalf  = elemCenterX < win.w / 2;
+    const rightStart  = sLeft + sW + 24;
+    const leftStart   = sLeft - TOOLTIP_W - 24;
+
+    if (inLeftHalf && rightStart + TOOLTIP_W < win.w - 16) {
+      // Place to the right of the element (in the terminal area)
+      tLeft = rightStart;
+      tTop  = Math.max(16, Math.min(sTop, win.h - TOOLTIP_H - 16));
+    } else if (!inLeftHalf && leftStart > 16) {
+      // Place to the left
+      tLeft = leftStart;
+      tTop  = Math.max(16, Math.min(sTop, win.h - TOOLTIP_H - 16));
+    } else {
+      // Fallback: below then above then center
+      tLeft = Math.max(16, Math.min(sLeft, win.w - TOOLTIP_W - 16));
+      tTop  = sTop + sH + 20;
+      if (tTop + TOOLTIP_H > win.h - 16) tTop = sTop - TOOLTIP_H - 20;
+      if (tTop < 16) tTop = win.h / 2 - TOOLTIP_H / 2;
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[200] select-none" style={{ pointerEvents: 'all' }}>
