@@ -121,7 +121,7 @@ Dans ton Web Service Render → **Environment** → ajoute ces 3 variables :
 
 ```
 NEXT_PUBLIC_SUPABASE_URL          → ton Project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY     → ta clé anon
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY     → ta clé anon
 SUPABASE_SERVICE_ROLE_KEY         → ta clé service_role
 ```
 
@@ -162,7 +162,7 @@ Phase 4 — Sync localStorage ↔ backend (1h)
 ```env
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 # Existantes (inchangées)
