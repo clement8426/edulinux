@@ -1,13 +1,37 @@
 import Link from 'next/link';
+import { levels } from '@/data/levels';
+import { scenarios } from '@/data/scenarios';
 
-const TRACKS = [
-  { range: '01–10', title: 'Terminal & SSH',      items: ['ls, cd, pwd, cat', 'grep, find', 'chmod, base64', 'SSH'],              accent: '#a3e635' },
-  { range: '11–20', title: 'Flux & Scripts',      items: ['>, >>, |', 'wc, sort, uniq', 'Variables, wildcards', 'Scripts Bash'], accent: '#a3e635' },
-  { range: '21–30', title: 'Sécurité',            items: ['sudo, SUID', 'Clés SSH', 'Hashing, sed, regex', 'CTF finale'],        accent: '#a3e635' },
-  { range: '31–40', title: 'Système Linux',       items: ['df, du, free, top', 'journalctl, systemctl', 'crontab, umask', 'Utilisateurs'],  accent: '#a3e635' },
-  { range: '41–50', title: 'Réseau',              items: ['ip, ss, dig', 'ping, traceroute', 'iptables, rsync', 'Tunnel SSH'],    accent: '#a3e635' },
-  { range: '51–60', title: 'Forensic Linux',      items: ['auth.log, stat', 'Timeline, lsof', 'Hash, persistance', 'Réponse IR'], accent: '#a3e635' },
-];
+// Computed from data at build time
+const totalLevels = levels.length;
+const totalScenarios = scenarios.length;
+const uniqueCommands = new Set(levels.flatMap(l => l.commands)).size;
+
+// Chapter definitions — ranges driven by actual level ids
+const CHAPTER_SIZE = 10;
+const CHAPTER_META: Record<number, { title: string; items: string[] }> = {
+  1:  { title: 'Terminal & SSH',       items: ['ls, cd, pwd, cat', 'grep, find, chmod', 'base64, SSH', 'Permissions'] },
+  11: { title: 'Flux & Scripts',       items: ['>, >>, |', 'wc, sort, uniq', 'Variables, wildcards', 'Scripts Bash'] },
+  21: { title: 'Réseau & Crypto',      items: ['sudo, SUID', 'Clés SSH', 'Hashing, sed, regex', 'CTF finale'] },
+  31: { title: 'Système Linux',        items: ['df, du, free, top', 'journalctl, systemctl', 'crontab, umask', 'Utilisateurs'] },
+  41: { title: 'Réseau',               items: ['ip, ss, dig', 'ping, traceroute', 'iptables, rsync', 'Tunnel SSH'] },
+  51: { title: 'Forensic Linux',       items: ['auth.log, stat', 'Timeline, lsof', 'Hash, persistance', 'Réponse IR'] },
+  61: { title: 'Reconnaissance',       items: ['nmap, dig', 'DNS, OSINT', 'Enumération web', 'Fingerprinting'] },
+  71: { title: 'Hacking & PrivEsc',    items: ['SUID, capabilities', 'Cron abuse', 'Pivoting', 'Persistence'] },
+  81: { title: 'Bash Avancé',          items: ['Boucles, fonctions', 'Arrays, regex', 'awk, sed avancés', 'trap, getopts'] },
+  91: { title: 'CTF Challenges',       items: ['Stéganographie', 'Encodages, hash', 'Analyse binaire', 'Docker escape'] },
+};
+
+const TRACKS = Object.entries(CHAPTER_META).map(([startStr, meta]) => {
+  const start = Number(startStr);
+  const end = start + CHAPTER_SIZE - 1;
+  const chapterLevels = levels.filter(l => l.id >= start && l.id <= end);
+  return {
+    range: `${String(start).padStart(2, '0')}–${String(Math.min(end, levels[levels.length - 1].id)).padStart(2, '0')}`,
+    count: chapterLevels.length,
+    ...meta,
+  };
+}).filter(t => t.count > 0);
 
 export default function Home() {
   return (
@@ -33,7 +57,8 @@ export default function Home() {
           <span className="text-gray-500">comme un</span> professionnel
         </h1>
         <p className="text-gray-400 text-lg max-w-xl mb-10 leading-relaxed">
-          60 niveaux progressifs — terminal, système, réseau, forensic. Tout dans le navigateur, simulateur fidèle, pas de compte requis.
+          {totalLevels} niveaux progressifs — terminal, système, réseau, forensic, CTF.
+          Tout dans le navigateur, vrai shell bash, pas de compte requis.
         </p>
 
         <div className="flex items-center gap-4 mb-20">
@@ -54,10 +79,10 @@ export default function Home() {
         {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/5 rounded overflow-hidden">
           {[
-            { v: '60',   l: 'niveaux' },
-            { v: '3',    l: 'scénarios IR' },
-            { v: '40+',  l: 'commandes' },
-            { v: '0',    l: 'installation' },
+            { v: String(totalLevels),      l: 'niveaux' },
+            { v: String(totalScenarios),   l: 'scénarios' },
+            { v: `${uniqueCommands}+`,     l: 'commandes' },
+            { v: '0',                      l: 'installation' },
           ].map(s => (
             <div key={s.l} className="bg-[#0a0e17] px-6 py-5 text-center">
               <div className="text-[#a3e635] font-bold text-2xl">{s.v}</div>
@@ -70,7 +95,9 @@ export default function Home() {
       {/* Parcours */}
       <section className="max-w-5xl mx-auto px-6 md:px-16 pb-20">
         <p className="text-gray-600 text-xs tracking-[0.3em] uppercase mb-2">Parcours</p>
-        <h2 className="text-2xl font-bold text-white mb-8">6 chapitres, des bases au forensic</h2>
+        <h2 className="text-2xl font-bold text-white mb-8">
+          {TRACKS.length} chapitres, des bases au CTF
+        </h2>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/5 rounded overflow-hidden">
           {TRACKS.map((t) => (
@@ -99,13 +126,15 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-10 items-start">
             <div>
               <p className="text-[#a3e635] text-xs tracking-[0.3em] uppercase mb-3">Mode avancé</p>
-              <h2 className="text-2xl font-bold text-white mb-4">Scénarios de mise en situation</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">
+                {totalScenarios} scénarios de mise en situation
+              </h2>
               <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                Une fois les bases acquises, affronte des incidents réalistes : brute-force SSH, webshell, cartographie réseau.
+                Une fois les bases acquises, affronte des incidents réalistes : brute-force SSH, webshell, cartographie réseau, privilege escalation.
                 Pas de commande unique — il faut raisonner et enchaîner.
               </p>
               <ul className="space-y-2 text-sm text-gray-500 mb-8">
-                {['Contexte détaillé fourni', 'Forensic, réseau, système', 'Validation par jalons', 'Badges et XP'].map(i => (
+                {['Contexte détaillé fourni', 'Forensic, réseau, pentest, hacking', 'Validation par jalons', 'Badges et XP'].map(i => (
                   <li key={i} className="flex items-center gap-2"><span className="text-[#a3e635]">✓</span>{i}</li>
                 ))}
               </ul>
