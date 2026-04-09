@@ -1,6 +1,21 @@
-# Plan — Authentification & Persistance Backend
+# Plan — Authentification & Persistance Backend (Supabase)
 
-> Objectif : ajouter la connexion GitHub / Google / email+mot de passe pour persister la progression (niveaux, scénarios, notes) côté serveur. Tout hébergé sur Render.
+> Objectif : ajouter la connexion GitHub / Google / email+mot de passe pour persister la progression (niveaux, scénarios, notes). App sur Render, base de données + auth sur Supabase (gratuit sans limite de durée).
+
+---
+
+## Pourquoi Supabase plutôt que Render PostgreSQL
+
+| Critère | Render PostgreSQL | Supabase |
+|---|---|---|
+| Durée gratuite | **90 jours** puis expire | **Illimité** (500MB) |
+| Auth intégrée | ❌ (besoin d'Auth.js) | ✅ (GitHub, Google, email natif) |
+| Dashboard data | basique | ✅ éditeur visuel de tables |
+| Dépendances code | Prisma + Auth.js + bcryptjs | **`@supabase/supabase-js` uniquement** |
+| Setup OAuth | dans le code | **dans le dashboard Supabase** |
+| Sécurité | manuelle | Row Level Security (RLS) intégré |
+
+**Conclusion** : Supabase divise par 3 la quantité de code à écrire et supprime le problème des 90 jours.
 
 ---
 
@@ -8,25 +23,23 @@
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  Render Web Service                  │
+│              Render Web Service (inchangé)           │
 │                                                      │
 │  Next.js 16 + server.js (WebSocket PTY)             │
-│  ├── /api/auth/[...nextauth]  ← Auth.js             │
-│  ├── /api/progress            ← GET / POST           │
-│  └── /api/notes               ← GET / POST           │
+│  ├── /api/progress     ← GET / POST                 │
+│  └── /api/notes        ← GET / POST                 │
+│  (auth gérée par Supabase Auth directement)         │
 └─────────────────────────────────────────────────────┘
-              │
-              │ SQL
+              │  HTTPS
               ▼
 ┌─────────────────────────────────────────────────────┐
-│          Render PostgreSQL (même compte)             │
+│              Supabase (service externe gratuit)      │
 │                                                      │
-│  tables : users, accounts, sessions,                │
-│           user_progress, user_notes                  │
+│  ├── Auth    — GitHub, Google, email+password       │
+│  ├── PostgreSQL — user_progress, user_notes         │
+│  └── RLS     — chaque user ne voit que ses données  │
 └─────────────────────────────────────────────────────┘
 ```
-
-**Aucun service externe** — tout tourne sur Render : le Web Service existant + une base PostgreSQL managée.
 
 ---
 
@@ -34,233 +47,178 @@
 
 | Besoin | Outil | Pourquoi |
 |---|---|---|
-| Auth (OAuth + credentials) | **Auth.js v5** (NextAuth) | natif Next.js, 1 config pour 3 providers |
-| Base de données | **Render PostgreSQL** | gratuit sur le même compte, pas de compte tiers |
-| ORM | **Prisma** | TypeScript-first, migrations simples |
-| Hash passwords | **bcryptjs** | légère, pas de dépendances natives |
-| Session | JWT (stateless) | pas de table session à gérer, compatible edge |
+| Auth (OAuth + email) | **Supabase Auth** | GitHub/Google/email configurés en dashboard, aucun code |
+| Base de données | **Supabase PostgreSQL** | gratuit, illimité, même projet |
+| Client JS | **`@supabase/supabase-js`** | remplace Prisma + Auth.js + bcryptjs |
+| Sessions SSR | **`@supabase/ssr`** | gère les cookies de session côté serveur Next.js |
+| Sécurité | **Row Level Security** | politiques SQL : chaque user accède uniquement à ses données |
+
+**Total dépendances à ajouter : 2 packages** (`@supabase/supabase-js` + `@supabase/ssr`)
 
 ---
 
-## 3. Providers Auth
+## 3. Ce que TU dois faire (sans code)
 
-### 3.1 GitHub
-- Créer une OAuth App sur `github.com/settings/developers`
-- Callback URL : `https://ton-app.onrender.com/api/auth/callback/github`
-- Variables : `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+### 3.1 Créer le projet Supabase
+1. Va sur [supabase.com](https://supabase.com) → **New project**
+2. Nomme-le `edulinux`, choisis une région **EU West** (ou US West)
+3. Génère un mot de passe fort pour la DB (sauvegarde-le)
+4. Attends 2 minutes que le projet se crée
 
-### 3.2 Google
-- Créer un projet sur `console.cloud.google.com`
-- Activer Google+ API, créer des identifiants OAuth
-- Callback URL : `https://ton-app.onrender.com/api/auth/callback/google`
-- Variables : `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+### 3.2 Configurer GitHub OAuth
+1. Va sur [github.com/settings/developers](https://github.com/settings/developers) → **New OAuth App**
+   - Homepage : `https://ton-projet.supabase.co`
+   - Callback URL : `https://ton-projet.supabase.co/auth/v1/callback`
+2. Copie **Client ID** et **Client Secret**
+3. Dans Supabase → **Authentication → Providers → GitHub** → active et colle les clés
 
-### 3.3 Email + Mot de passe
-- Provider `Credentials` de Auth.js
-- Vérification hash bcrypt à la connexion
-- Route `/api/auth/register` pour la création de compte (hors Auth.js)
-- Pas d'email de vérification dans un premier temps (optionnel plus tard)
+### 3.3 Configurer Google OAuth
+1. Va sur [console.cloud.google.com](https://console.cloud.google.com) → nouveau projet → **Identifiants OAuth**
+   - Redirect URI : `https://ton-projet.supabase.co/auth/v1/callback`
+2. Copie **Client ID** et **Client Secret**
+3. Dans Supabase → **Authentication → Providers → Google** → active et colle les clés
 
----
+### 3.4 Créer les tables dans Supabase
+Va dans **Supabase → SQL Editor** et exécute ce SQL :
 
-## 4. Schéma base de données
+```sql
+-- Table progression
+create table user_progress (
+  user_id uuid references auth.users(id) on delete cascade primary key,
+  levels_completed integer[] default '{}',
+  scenarios_completed integer[] default '{}',
+  scenario_steps jsonb default '{}',
+  xp integer default 0,
+  updated_at timestamptz default now()
+);
 
-```prisma
-// prisma/schema.prisma
+-- Table notes
+create table user_notes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  key text not null,
+  content text default '',
+  updated_at timestamptz default now(),
+  unique(user_id, key)
+);
 
-generator client {
-  provider = "prisma-client-js"
-}
+-- Sécurité : chaque utilisateur ne voit que ses propres données
+alter table user_progress enable row level security;
+alter table user_notes enable row level security;
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+create policy "own_progress" on user_progress for all using (auth.uid() = user_id);
+create policy "own_notes" on user_notes for all using (auth.uid() = user_id);
+```
 
-// ── Tables Auth.js ────────────────────────────────────
+### 3.5 Récupérer les clés Supabase
+Dans Supabase → **Settings → API** :
+- **Project URL** → `https://xxxxxxxx.supabase.co`
+- **anon (public) key** → clé longue commençant par `eyJ...`
+- **service_role key** → pour les routes API serveur (garde-la secrète)
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?   // null pour les comptes OAuth
-  createdAt     DateTime  @default(now())
+### 3.6 Ajouter les variables sur Render
+Dans ton Web Service Render → **Environment** → ajoute ces 3 variables :
 
-  accounts  Account[]
-  progress  UserProgress?
-  notes     UserNote[]
-}
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  access_token      String?
-  refresh_token     String?
-  expires_at        Int?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-// ── Tables application ────────────────────────────────
-
-model UserProgress {
-  userId            String   @id
-  levelsCompleted   Int[]    @default([])
-  scenariosCompleted Int[]   @default([])
-  scenarioSteps     Json     @default("{}")  // { "1": [101, 102], "2": [201] }
-  xp                Int      @default(0)
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model UserNote {
-  id        String   @id @default(cuid())
-  userId    String
-  key       String   // ex: "level-1" ou "scenario-2"
-  content   String   @default("")
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, key])
-}
+```
+NEXT_PUBLIC_SUPABASE_URL          → ton Project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY     → ta clé anon
+SUPABASE_SERVICE_ROLE_KEY         → ta clé service_role
 ```
 
 ---
 
-## 5. Variables d'environnement à configurer sur Render
+## 4. Ce que MOI je fais (le code)
+
+Une fois tes 3 variables Render configurées :
+
+```
+Phase 1 — Setup (30 min)
+  1. npm install @supabase/supabase-js @supabase/ssr
+  2. lib/supabase.ts — client browser + client server
+  3. middleware.ts — refresh sessions automatique
+
+Phase 2 — Auth pages (1h)
+  4. app/auth/login/page.tsx — GitHub, Google, email+password
+  5. app/auth/register/page.tsx — inscription email
+  6. app/auth/callback/route.ts — handler OAuth redirect
+  7. Composant UserMenu dans la nav (toutes les pages)
+
+Phase 3 — API routes (1h)
+  8. app/api/progress/route.ts — GET / POST (service_role)
+  9. app/api/notes/route.ts — GET / POST (service_role)
+
+Phase 4 — Sync localStorage ↔ backend (1h)
+  10. Hook useProgress — sync silencieux en arrière-plan
+  11. useNotes — debounce 1s avant POST
+  12. Fusion à la connexion (prendre le max des deux)
+```
+
+**Total : ~3h30 de code côté moi.**
+
+---
+
+## 5. Variables d'environnement finales sur Render
 
 ```env
-# Base de données (fourni par Render PostgreSQL)
-DATABASE_URL=postgresql://...
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
-# Auth.js
-NEXTAUTH_URL=https://ton-app.onrender.com
-NEXTAUTH_SECRET=<openssl rand -base64 32>
-
-# GitHub OAuth
-GITHUB_CLIENT_ID=...
-GITHUB_CLIENT_SECRET=...
-
-# Google OAuth
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+# Existantes (inchangées)
+PORT=10000
+NODE_ENV=production
 ```
 
----
-
-## 6. API Routes à créer
-
-### `GET/POST /api/progress`
-- `GET` → retourne la progression de l'utilisateur connecté
-- `POST` → met à jour `levelsCompleted`, `scenariosCompleted`, `scenarioSteps`, `xp`
-
-### `GET/POST /api/notes`
-- `GET ?key=level-1` → retourne la note pour cette clé
-- `POST { key, content }` → upsert de la note
-
-### `POST /api/auth/register`
-- Crée un compte email/password (hash bcrypt + insert User)
-- Retourne une session Auth.js
+Aucune variable `NEXTAUTH_*`, `DATABASE_URL`, `GITHUB_CLIENT_*` ou `GOOGLE_CLIENT_*`
+côté Render — tout ça est géré dans le dashboard Supabase.
 
 ---
 
-## 7. Migration localStorage → backend
+## 6. Fonctionnement de l'auth Supabase
 
-La stratégie : **conserver localStorage comme cache local**, synchroniser avec le backend.
+```
+Utilisateur clique "GitHub"
+  → redirigé vers github.com (Supabase gère)
+  → revient sur /auth/callback
+  → Supabase crée/met à jour l'entrée dans auth.users
+  → session stockée dans un cookie HttpOnly
+  → hook côté client détecte la session
+  → fusion localStorage ↔ backend silencieuse
+```
+
+Pour email+password : Supabase gère le hash (bcrypt natif), pas besoin de bcryptjs.
+
+---
+
+## 7. Migration localStorage → backend (inchangée)
 
 ```
 Connexion utilisateur
-  ├─► Charger la progression depuis le backend
-  └─► Fusionner avec localStorage (prendre le max entre les deux)
+  ├─► Charger progression depuis Supabase
+  └─► Fusionner avec localStorage (prendre le max)
 
 Action (compléter un niveau)
-  ├─► Mettre à jour localStorage (immédiat, pas de latence)
-  └─► POST /api/progress en arrière-plan (fire and forget)
+  ├─► Mettre à jour localStorage (immédiat)
+  └─► POST /api/progress en arrière-plan
 
-Notes
-  ├─► Sauvegarder dans localStorage (onChange)
+Notes (onChange)
+  ├─► Sauvegarder localStorage
   └─► POST /api/notes avec debounce 1s
 ```
 
-Avantages :
-- L'app reste 100% fonctionnelle sans compte (localStorage only)
-- La connexion enrichit l'expérience sans la bloquer
-- Offline-friendly
+L'app reste 100% fonctionnelle sans compte (localStorage only).
 
 ---
 
-## 8. UI à ajouter
+## 8. Limites du plan gratuit Supabase
 
-### Page `/auth/login`
-- Bouton "Continuer avec GitHub" (logo GitHub)
-- Bouton "Continuer avec Google" (logo Google)
-- Séparateur "— ou —"
-- Formulaire email / mot de passe
-- Lien "Créer un compte"
+| Ressource | Gratuit |
+|---|---|
+| Stockage DB | 500 MB (largement suffisant) |
+| Auth users | illimité |
+| Bande passante | 5 GB/mois |
+| Durée | **Illimitée** (projet actif) |
+| Inactivité | projet mis en pause après **1 semaine sans requête** — 1 clic pour réactiver |
 
-### Page `/auth/register`
-- Formulaire : nom, email, mot de passe, confirmation
-- Après inscription → connexion automatique
-
-### Composant `UserMenu` dans la nav (toutes les pages)
-- Non connecté : bouton "Connexion" → `/auth/login`
-- Connecté : avatar + pseudo + "Déconnexion"
-
-### Badge de progression globale (optionnel phase 2)
-- XP total, niveaux/scénarios complétés visible dans le profil
-
----
-
-## 9. Ordre d'implémentation recommandé
-
-```
-Phase 1 — Infrastructure (1-2h)
-  1. Créer la base PostgreSQL sur Render
-  2. Installer Prisma + Auth.js + bcryptjs
-  3. Configurer schema.prisma + migration initiale
-  4. Configurer auth.config.ts (providers, callbacks JWT)
-
-Phase 2 — API (1-2h)
-  5. Route /api/auth/[...nextauth]
-  6. Route /api/auth/register
-  7. Route /api/progress (GET + POST)
-  8. Route /api/notes (GET + POST)
-
-Phase 3 — Frontend (2-3h)
-  9. Pages /auth/login et /auth/register
-  10. Composant UserMenu dans la nav
-  11. Hook useProgress → synchronisation localStorage + backend
-  12. useNotes → debounced sync
-
-Phase 4 — Polish (1h)
-  13. Fusion intelligente localStorage/backend à la connexion
-  14. Messages d'erreur (email déjà pris, mauvais mot de passe…)
-  15. Redirect après login vers la page d'origine
-```
-
----
-
-## 10. Dépendances à installer
-
-```bash
-npm install next-auth@beta @auth/prisma-adapter prisma @prisma/client bcryptjs
-npm install -D @types/bcryptjs
-```
-
----
-
-## Notes importantes
-
-- **Render PostgreSQL gratuit** expire après 90 jours sur le plan Hobby (Jan 2025). Pour un usage permanent, prévoir le plan Starter ($7/mois pour la DB) ou migrer vers **Neon** (PostgreSQL serverless, free tier permanent).
-- **Auth.js v5** est en beta mais stable pour Next.js App Router. La v4 (NextAuth) fonctionne aussi mais avec un setup légèrement différent.
-- **Pas d'email de vérification** dans ce plan pour rester simple. Peut s'ajouter avec Resend (gratuit jusqu'à 3000 emails/mois) en phase 2.
-- La progression **sans compte reste possible** (localStorage) — les utilisateurs ne sont jamais forcés de créer un compte.
+> Pour éviter la mise en pause : un simple cron job gratuit (ex: UptimeRobot) qui ping `/api/progress` toutes les 5 min suffit.
