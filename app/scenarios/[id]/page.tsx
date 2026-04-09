@@ -209,8 +209,8 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Steps navigation */}
-      <div data-tutorial="scenario-steps">
-        <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-2">Étapes</p>
+      <div>
+        <p data-tutorial="scenario-steps" className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-2">Étapes</p>
         <div className="space-y-1.5">
           {scenario.steps.map((step, i) => {
             const done = stepsDone.has(step.id);
@@ -291,7 +291,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
 
   // Notes panel
   const notesPanel = (
-    <div data-tutorial="scenario-notes" className="p-5 flex flex-col h-full">
+    <div className="p-5 flex flex-col h-full">
       <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-3">
         Notes — {scenario.title}
       </p>
@@ -376,6 +376,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
               Mission
             </button>
             <button
+              data-tutorial="scenario-notes"
               onClick={() => setActiveTab('notes')}
               className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors relative ${
                 activeTab === 'notes' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600 hover:text-gray-400'

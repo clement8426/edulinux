@@ -220,7 +220,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
 
   // Notes panel
   const notesPanel = (
-    <div data-tutorial="level-notes" className="p-5 flex flex-col h-full">
+    <div className="p-5 flex flex-col h-full">
       <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-3">
         Notes — Niveau {String(levelId).padStart(2, '0')}
       </p>
@@ -301,6 +301,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
               Info
             </button>
             <button
+              data-tutorial="level-notes"
               onClick={() => setActiveTab('notes')}
               className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors relative ${
                 activeTab === 'notes' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600 hover:text-gray-400'
