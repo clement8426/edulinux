@@ -26,7 +26,19 @@ export async function proxy(request: NextRequest) {
   );
 
   // Rafraîchit la session si elle a expiré — ne pas supprimer
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Routes protégées : exercices et scénarios individuels
+  const { pathname } = request.nextUrl;
+  const isProtected =
+    /^\/levels\/\d+/.test(pathname) ||
+    /^\/scenarios\/\d+/.test(pathname);
+
+  if (isProtected && !user) {
+    const loginUrl = new URL('/auth/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
 
   return supabaseResponse;
 }

@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next') ?? '/';
 
   const supabase = createClient();
 
@@ -21,7 +25,7 @@ export default function LoginPage() {
     if (error) {
       setError('Email ou mot de passe incorrect.');
     } else {
-      window.location.href = '/';
+      window.location.href = next;
     }
     setLoading(false);
   };
@@ -32,7 +36,7 @@ export default function LoginPage() {
     const origin = window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${origin}/auth/callback?next=/` },
+      options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     if (error) {
       setError(`Connexion ${provider} impossible. Vérifie la configuration Supabase.`);
@@ -47,7 +51,7 @@ export default function LoginPage() {
     const origin = window.location.origin;
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${origin}/auth/callback?next=/` },
+      options: { emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     if (error) {
       setError('Impossible d\'envoyer le lien. Vérifie l\'email.');
@@ -80,7 +84,11 @@ export default function LoginPage() {
               <span className="w-3 h-3 rounded-full bg-green-500/70" />
             </div>
             <p className="text-[#a3e635] text-xs tracking-widest uppercase mb-1">Connexion</p>
-            <p className="text-gray-500 text-xs">sauvegarde ta progression dans le cloud</p>
+            {next !== '/' ? (
+              <p className="text-yellow-400/80 text-xs">Connecte-toi pour accéder à cet exercice</p>
+            ) : (
+              <p className="text-gray-500 text-xs">sauvegarde ta progression dans le cloud</p>
+            )}
           </div>
 
           <div className="border border-white/8 rounded-xl bg-[#0d1117] p-6 space-y-4">
@@ -178,5 +186,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0e17]" />}>
+      <LoginForm />
+    </Suspense>
   );
 }
