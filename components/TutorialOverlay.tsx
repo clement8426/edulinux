@@ -15,7 +15,7 @@ interface Props {
 
 const PAD = 10;
 const TOOLTIP_W = 300;
-const TOOLTIP_H = 210; // hauteur max estimée du tooltip (utilisée pour le clamping)
+const TOOLTIP_H = 260; // hauteur réservée pour le clamping (contenu + padding + boutons)
 
 export default function TutorialOverlay({ steps, onClose }: Props) {
   const [idx, setIdx] = useState(0);
@@ -128,11 +128,11 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
 
       {/* Tooltip card */}
       <div
-        className="absolute bg-[#0d1117] border border-[#a3e635]/30 rounded-xl p-5 shadow-2xl transition-all duration-300 overflow-y-auto"
-        style={{ width: TOOLTIP_W, top: tTop, left: tLeft, maxHeight: win.h - tTop - 16 }}
+        className="absolute bg-[#0d1117] border border-[#a3e635]/30 rounded-xl p-4 shadow-2xl transition-all duration-300"
+        style={{ width: TOOLTIP_W, top: tTop, left: tLeft }}
       >
         {/* Dot progress */}
-        <div className="flex items-center gap-1.5 mb-3">
+        <div className="flex items-center gap-1.5 mb-2">
           {steps.map((_, i) => (
             <div
               key={i}
@@ -144,8 +144,8 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
           <span className="ml-auto text-gray-600 text-xs">{idx + 1}/{steps.length}</span>
         </div>
 
-        <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-1.5">{step.title}</p>
-        <p className="text-gray-300 text-sm leading-relaxed mb-5">{step.description}</p>
+        <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-1">{step.title}</p>
+        <p className="text-gray-300 text-sm leading-relaxed mb-4">{step.description}</p>
 
         <div className="flex items-center justify-between">
           <button
