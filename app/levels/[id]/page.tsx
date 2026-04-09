@@ -185,13 +185,17 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {/* Validations */}
-      <div data-tutorial="level-validation">
-        <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-2">À valider</p>
-        <ul className="space-y-1.5">
+      <div data-tutorial="level-validation" className="border border-[#a3e635]/40 bg-[#a3e635]/5 rounded-lg p-3">
+        <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+          <span className="text-[10px]">◉</span> À valider
+        </p>
+        <ul className="space-y-2">
           {level.validation.map((rule, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
-              <span className="text-[#a3e635] font-bold mt-0.5 flex-shrink-0">›</span>
-              {rule.description || rule.value}
+            <li key={i} className="flex items-start gap-2.5 text-xs">
+              <span className="w-4 h-4 rounded-full border border-white/25 flex-shrink-0 mt-0.5 flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+              </span>
+              <span className="text-gray-100 leading-relaxed">{rule.description || rule.value}</span>
             </li>
           ))}
         </ul>

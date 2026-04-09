@@ -252,13 +252,17 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-1">Objectif</p>
           <p className="text-gray-200 text-xs leading-relaxed">{currentStep.objective}</p>
         </div>
-        <div>
-          <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-1.5">À valider</p>
-          <ul className="space-y-1">
+        <div className="border border-[#a3e635]/40 bg-[#a3e635]/5 rounded-lg p-3">
+          <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+            <span className="text-[10px]">◉</span> À valider
+          </p>
+          <ul className="space-y-2">
             {currentStep.validation.map((v, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-xs text-gray-400">
-                <span className="text-[#a3e635] flex-shrink-0">›</span>
-                {v.description}
+              <li key={i} className="flex items-start gap-2.5 text-xs">
+                <span className="w-4 h-4 rounded-full border border-white/25 flex-shrink-0 mt-0.5 flex items-center justify-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                </span>
+                <span className="text-gray-100 leading-relaxed">{v.description}</span>
               </li>
             ))}
           </ul>
