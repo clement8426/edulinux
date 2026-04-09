@@ -10,6 +10,24 @@ import TutorialOverlay, { TutorialStep } from '@/components/TutorialOverlay';
 
 const RealTerminal = dynamic(() => import('@/components/RealTerminal'), { ssr: false });
 
+const MOBILE_TUTORIAL_STEPS: TutorialStep[] = [
+  {
+    target: 'mobile-scenario-strip',
+    title: "L'étape courante",
+    description: "Le titre et l'objectif de l'étape en cours sont affichés ici. Lis bien l'objectif avant d'agir.",
+  },
+  {
+    target: 'mobile-scenario-info-btn',
+    title: "Mission & notes",
+    description: "Appuie ici pour voir le briefing, les étapes, les indices et prendre des notes. Reviens au terminal en fermant.",
+  },
+  {
+    target: 'scenario-terminal',
+    title: "Le terminal",
+    description: "Tape tes commandes ici. Chaque étape a son propre environnement avec ses propres fichiers.",
+  },
+];
+
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     target: 'scenario-header',
@@ -316,7 +334,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     <div className="h-screen overflow-hidden bg-[#0a0e17] text-white font-mono flex flex-col">
       {/* Tutorial */}
       {showTutorial && (
-        <TutorialOverlay steps={TUTORIAL_STEPS} onClose={() => setShowTutorial(false)} />
+        <TutorialOverlay steps={TUTORIAL_STEPS} mobileSteps={MOBILE_TUTORIAL_STEPS} onClose={() => setShowTutorial(false)} />
       )}
 
       {/* Nav */}
@@ -350,11 +368,12 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
 
       {/* Mobile compact strip */}
       <div className="lg:hidden border-b border-white/5 bg-[#060a10] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
-        <div className="min-w-0 mr-3">
+        <div data-tutorial="mobile-scenario-strip" className="min-w-0 mr-3">
           <p className="text-white text-sm font-bold truncate leading-tight">{currentStep.title}</p>
           <p className="text-[#a3e635] text-xs truncate mt-0.5">{currentStep.objective}</p>
         </div>
         <button
+          data-tutorial="mobile-scenario-info-btn"
           onClick={() => setShowMobileInfo(true)}
           className="flex-shrink-0 border border-white/10 text-gray-400 hover:text-white text-xs px-3 py-1.5 rounded transition-colors"
         >

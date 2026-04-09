@@ -45,6 +45,24 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   },
 ];
 
+const MOBILE_TUTORIAL_STEPS: TutorialStep[] = [
+  {
+    target: 'mobile-level-strip',
+    title: "L'objectif du niveau",
+    description: "Le titre et l'objectif du niveau sont affichés ici. Lis l'objectif avant de commencer.",
+  },
+  {
+    target: 'mobile-level-info-btn',
+    title: "Détails & notes",
+    description: "Appuie ici pour voir la description complète, les indices et prendre des notes. Reviens au terminal en fermant.",
+  },
+  {
+    target: 'level-terminal',
+    title: "Le terminal",
+    description: "Tape tes commandes Linux ici. Utilise Tab pour l'autocomplétion et ↑ pour l'historique.",
+  },
+];
+
 export default function LevelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const levelId = parseInt(id);
@@ -245,7 +263,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
     <div className="h-screen overflow-hidden bg-[#0a0e17] text-white font-mono flex flex-col">
       {/* Tutorial */}
       {showTutorial && (
-        <TutorialOverlay steps={TUTORIAL_STEPS} onClose={() => setShowTutorial(false)} />
+        <TutorialOverlay steps={TUTORIAL_STEPS} mobileSteps={MOBILE_TUTORIAL_STEPS} onClose={() => setShowTutorial(false)} />
       )}
 
       {/* Nav */}
@@ -275,11 +293,12 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
 
       {/* Mobile compact strip */}
       <div className="lg:hidden border-b border-white/5 bg-[#060a10] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
-        <div className="min-w-0 mr-3">
+        <div data-tutorial="mobile-level-strip" className="min-w-0 mr-3">
           <p className="text-white text-sm font-bold truncate leading-tight">{level.title}</p>
           <p className="text-[#a3e635] text-xs truncate mt-0.5">{level.objective}</p>
         </div>
         <button
+          data-tutorial="mobile-level-info-btn"
           onClick={() => setShowMobileInfo(true)}
           className="flex-shrink-0 border border-white/10 text-gray-400 hover:text-white text-xs px-3 py-1.5 rounded transition-colors"
         >

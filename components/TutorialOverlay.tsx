@@ -9,20 +9,28 @@ export interface TutorialStep {
 }
 
 interface Props {
-  steps: TutorialStep[];
+  steps: TutorialStep[];          // étapes desktop
+  mobileSteps?: TutorialStep[];   // étapes mobile (optionnel)
   onClose: () => void;
 }
 
 const PAD = 10;
-const TOOLTIP_W = 300;
-const TOOLTIP_H = 260; // hauteur réservée pour le clamping (contenu + padding + boutons)
+const TOOLTIP_W_DESKTOP = 300;
+const TOOLTIP_H = 260;
 
-export default function TutorialOverlay({ steps, onClose }: Props) {
+export default function TutorialOverlay({ steps, mobileSteps, onClose }: Props) {
   const [idx, setIdx] = useState(0);
   const [hl, setHl] = useState<{ top: number; left: number; w: number; h: number } | null>(null);
   const [win, setWin] = useState({ w: 1280, h: 800 });
 
-  const step = steps[idx];
+  const isMobile = win.w < 1024;
+  const activeSteps = isMobile && mobileSteps ? mobileSteps : steps;
+  const step = activeSteps[idx] ?? activeSteps[0];
+
+  // Reset step index when switching between mobile/desktop step sets
+  useEffect(() => {
+    setIdx(0);
+  }, [isMobile]);
 
   // Track window size
   useEffect(() => {
@@ -47,10 +55,11 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
       });
     });
     return () => cancelAnimationFrame(rafId ?? rafTimer);
-  }, [idx, step.target]);
+  }, [idx, step.target, isMobile]);
 
-  // Keyboard navigation
+  // Keyboard navigation (desktop only)
   useEffect(() => {
+    if (isMobile) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'Enter') goNext();
       if (e.key === 'ArrowLeft') goPrev();
@@ -59,12 +68,12 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx]);
+  }, [idx, isMobile]);
 
   const goNext = useCallback(() => {
-    if (idx < steps.length - 1) setIdx(i => i + 1);
+    if (idx < activeSteps.length - 1) setIdx(i => i + 1);
     else onClose();
-  }, [idx, steps.length, onClose]);
+  }, [idx, activeSteps.length, onClose]);
 
   const goPrev = useCallback(() => {
     if (idx > 0) setIdx(i => i - 1);
@@ -76,32 +85,38 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
   const sW    = hl ? hl.w + PAD * 2 : 0;
   const sH    = hl ? hl.h + PAD * 2 : 0;
 
-  // Tooltip placement strategy:
-  // - Element in left half → tooltip to the right (terminal zone), vertically centered on element
-  // - Element in right half → tooltip to the left, or below/above if no room
-  // - No element → center of screen
+  // Tooltip width adapts to screen
+  const TOOLTIP_W = isMobile ? Math.min(win.w - 32, 340) : TOOLTIP_W_DESKTOP;
+
+  // Tooltip placement
   let tTop: number;
   let tLeft: number;
 
   if (!hl) {
+    // No element found → center
     tTop  = win.h / 2 - TOOLTIP_H / 2;
     tLeft = win.w / 2 - TOOLTIP_W / 2;
+  } else if (isMobile) {
+    // Mobile : centré horizontalement, sous l'élément (ou au-dessus si trop bas)
+    tLeft = Math.max(16, Math.min(win.w / 2 - TOOLTIP_W / 2, win.w - TOOLTIP_W - 16));
+    tTop  = sTop + sH + 16;
+    if (tTop + TOOLTIP_H > win.h - 16) tTop = sTop - TOOLTIP_H - 16;
+    if (tTop < 16) tTop = win.h / 2 - TOOLTIP_H / 2;
   } else {
+    // Desktop : droite ou gauche selon la position de l'élément
     const elemCenterX = sLeft + sW / 2;
     const inLeftHalf  = elemCenterX < win.w / 2;
     const rightStart  = sLeft + sW + 24;
     const leftStart   = sLeft - TOOLTIP_W - 24;
 
     if (inLeftHalf && rightStart + TOOLTIP_W < win.w - 16) {
-      // Place to the right of the element (in the terminal area)
       tLeft = rightStart;
       tTop  = Math.max(16, Math.min(sTop + sH / 2 - TOOLTIP_H / 2, win.h - TOOLTIP_H - 16));
     } else if (!inLeftHalf && leftStart > 16) {
-      // Place to the left
       tLeft = leftStart;
       tTop  = Math.max(16, Math.min(sTop + sH / 2 - TOOLTIP_H / 2, win.h - TOOLTIP_H - 16));
     } else {
-      // Fallback: below then above then center
+      // Fallback : bas → haut → centre
       tLeft = Math.max(16, Math.min(sLeft, win.w - TOOLTIP_W - 16));
       tTop  = sTop + sH + 20;
       if (tTop + TOOLTIP_H > win.h - 16) tTop = sTop - TOOLTIP_H - 20;
@@ -118,9 +133,8 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
           <div className="absolute bg-black/80" style={{ top: sTop + sH, left: 0, right: 0, bottom: 0 }} />
           <div className="absolute bg-black/80" style={{ top: sTop, left: 0, width: sLeft, height: sH }} />
           <div className="absolute bg-black/80" style={{ top: sTop, left: sLeft + sW, right: 0, height: sH }} />
-          {/* Green highlight border */}
           <div
-            className="absolute rounded pointer-events-none transition-all duration-300"
+            className="absolute rounded pointer-events-none"
             style={{
               top: sTop, left: sLeft, width: sW, height: sH,
               boxShadow: '0 0 0 2px #a3e635, 0 0 20px 4px rgba(163,230,53,0.15)',
@@ -133,12 +147,12 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
 
       {/* Tooltip card */}
       <div
-        className="absolute bg-[#0d1117] border border-[#a3e635]/30 rounded-xl p-4 shadow-2xl transition-all duration-300"
+        className="absolute bg-[#0d1117] border border-[#a3e635]/30 rounded-xl p-4 shadow-2xl"
         style={{ width: TOOLTIP_W, top: tTop, left: tLeft }}
       >
         {/* Dot progress */}
         <div className="flex items-center gap-1.5 mb-2">
-          {steps.map((_, i) => (
+          {activeSteps.map((_, i) => (
             <div
               key={i}
               className={`rounded-full transition-all duration-300 ${
@@ -146,7 +160,7 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
               }`}
             />
           ))}
-          <span className="ml-auto text-gray-600 text-xs">{idx + 1}/{steps.length}</span>
+          <span className="ml-auto text-gray-600 text-xs">{idx + 1}/{activeSteps.length}</span>
         </div>
 
         <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-1">{step.title}</p>
@@ -164,12 +178,12 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
             onClick={goNext}
             className="bg-[#a3e635] text-black text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-[#bef264] transition-colors"
           >
-            {idx < steps.length - 1 ? 'Suivant →' : 'Terminer ✓'}
+            {idx < activeSteps.length - 1 ? 'Suivant →' : 'Terminer ✓'}
           </button>
         </div>
       </div>
 
-      {/* Skip */}
+      {/* Passer */}
       <button
         onClick={onClose}
         className="absolute top-4 right-4 text-gray-500 hover:text-white text-sm transition-colors px-3 py-1 rounded border border-white/10 hover:border-white/30"
@@ -177,10 +191,12 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
         Passer ✕
       </button>
 
-      {/* Keyboard hint */}
-      <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-700 text-xs">
-        ← → pour naviguer · Échap pour quitter
-      </p>
+      {/* Keyboard hint — desktop only */}
+      {!isMobile && (
+        <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-700 text-xs">
+          ← → pour naviguer · Échap pour quitter
+        </p>
+      )}
     </div>
   );
 }
