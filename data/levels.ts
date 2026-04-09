@@ -332,9 +332,10 @@ export const levels: Level[] = [
       'folder3': {}
     },
     validation: [
-      { type: 'command', value: 'find . -name secret.txt', description: 'Trouver le fichier secret.txt' }
+      { type: 'command', value: 'find', description: 'Utiliser find pour localiser secret.txt' },
+      { type: 'command', value: 'cat', description: 'Lire le contenu du fichier trouvé' }
     ],
-    story: "📂 Le fichier secret.txt est caché quelque part dans l'arborescence. Find it!"
+    story: "📂 Le fichier secret.txt est caché quelque part dans l'arborescence. Trouve-le, puis lis-le !"
   },
   {
     id: 9,
