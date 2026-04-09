@@ -210,8 +210,8 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
 
       {/* Steps navigation */}
       <div>
-        <p data-tutorial="scenario-steps" className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-2">Étapes</p>
-        <div className="space-y-1.5">
+        <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-2">Étapes</p>
+        <div data-tutorial="scenario-steps" className="space-y-1.5">
           {scenario.steps.map((step, i) => {
             const done = stepsDone.has(step.id);
             const active = i === currentStepIdx;
