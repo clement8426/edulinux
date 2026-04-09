@@ -5,6 +5,7 @@ import { useProgress } from '@/hooks/useProgress';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Footer from '@/components/Footer';
+import UserMenu from '@/components/UserMenu';
 
 const CAT_COLOR: Record<string, string> = {
   forensic: 'text-orange-400 border-orange-400/20',
@@ -24,6 +25,7 @@ export default function ScenariosPage() {
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <Link href="/levels" className="hover:text-white transition-colors">niveaux</Link>
           <span className="text-white font-bold">scénarios</span>
+          <UserMenu />
         </div>
       </nav>
 

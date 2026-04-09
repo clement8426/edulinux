@@ -5,6 +5,7 @@ import { useProgress } from '@/hooks/useProgress';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Footer from '@/components/Footer';
+import UserMenu from '@/components/UserMenu';
 
 const CHAPTERS = [
   { range: [1,  10], label: 'Terminal & SSH',       tag: '01–10' },
@@ -57,6 +58,7 @@ export default function LevelsPage() {
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <span className="text-white font-bold">niveaux</span>
           <Link href="/scenarios" className="hover:text-white transition-colors">scénarios</Link>
+          <UserMenu />
         </div>
       </nav>
 

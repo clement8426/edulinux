@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TutorialOverlay, { TutorialStep } from '@/components/TutorialOverlay';
+import UserMenu from '@/components/UserMenu';
 
 const RealTerminal = dynamic(() => import('@/components/RealTerminal'), { ssr: false });
 
@@ -80,10 +81,20 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
   const startXRef = useRef(0);
   const startWRef = useRef(300);
 
-  // Load notes from localStorage
+  // Load notes — localStorage puis sync serveur
   useEffect(() => {
     const saved = localStorage.getItem(`notes-level-${levelId}`);
     if (saved) setNotes(saved);
+    fetch(`/api/notes?context=level-${levelId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const note = data?.notes?.[0];
+        if (note?.content) {
+          setNotes(note.content);
+          localStorage.setItem(`notes-level-${levelId}`, note.content);
+        }
+      })
+      .catch(() => {});
   }, [levelId]);
 
   // Auto-show tutorial on first visit
@@ -127,9 +138,18 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
     else router.push('/levels');
   }, [completeLevel, levelId, router]);
 
+  const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleNotes = (v: string) => {
     setNotes(v);
     localStorage.setItem(`notes-level-${levelId}`, v);
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
+    notesDebounceRef.current = setTimeout(() => {
+      fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: `level-${levelId}`, content: v }),
+      }).catch(() => {});
+    }, 1500);
   };
 
   if (!level) {
@@ -273,6 +293,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
           <span className="hidden sm:inline">niveaux</span>
         </Link>
         <div className="flex items-center gap-3 text-xs">
+          <UserMenu />
           <button
             onClick={() => setShowTutorial(true)}
             className="text-gray-600 hover:text-[#a3e635] border border-white/8 hover:border-[#a3e635]/30 px-2.5 py-1 rounded text-xs transition-all"

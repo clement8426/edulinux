@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { levels } from '@/data/levels';
 import { scenarios } from '@/data/scenarios';
 import Footer from '@/components/Footer';
+import UserMenu from '@/components/UserMenu';
 
 // Computed from data at build time
 const totalLevels = levels.length;
@@ -47,6 +48,7 @@ export default function Home() {
           <Link href="/levels" className="border border-[#a3e635]/50 text-[#a3e635] hover:bg-[#a3e635] hover:text-black px-3 sm:px-4 py-1.5 rounded transition-all font-bold text-xs sm:text-sm">
             démarrer
           </Link>
+          <UserMenu />
         </div>
       </nav>
 

@@ -3,6 +3,7 @@
 import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { scenarios, getScenarioCategoryIcon, getScenarioCategoryLabel, getScenarioCategoryColor } from '@/data/scenarios';
 import { useProgress } from '@/hooks/useProgress';
+import UserMenu from '@/components/UserMenu';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -90,6 +91,16 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     const saved = localStorage.getItem(`notes-scenario-${scenarioId}`);
     if (saved) setNotes(saved);
+    fetch(`/api/notes?context=scenario-${scenarioId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const note = data?.notes?.[0];
+        if (note?.content) {
+          setNotes(note.content);
+          localStorage.setItem(`notes-scenario-${scenarioId}`, note.content);
+        }
+      })
+      .catch(() => {});
   }, [scenarioId]);
 
   // Auto-show tutorial on first visit
@@ -148,9 +159,18 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     setTerminalKey(k => k + 1);
   }, [stepsDone, scenario, currentStepIdx]);
 
+  const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleNotes = (v: string) => {
     setNotes(v);
     localStorage.setItem(`notes-scenario-${scenarioId}`, v);
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
+    notesDebounceRef.current = setTimeout(() => {
+      fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: `scenario-${scenarioId}`, content: v }),
+      }).catch(() => {});
+    }, 1500);
   };
 
   // Conditional returns AFTER all hooks
@@ -344,6 +364,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           <span className="hidden sm:inline">scénarios</span>
         </Link>
         <div className="flex items-center gap-3 text-xs">
+          <UserMenu />
           <button
             onClick={() => setShowTutorial(true)}
             className="text-gray-600 hover:text-[#a3e635] border border-white/8 hover:border-[#a3e635]/30 px-2.5 py-1 rounded text-xs transition-all"
