@@ -94,12 +94,12 @@ export const levels: Level[] = [
     title: "Lire des fichiers",
     difficulty: 'beginner',
     category: "Lecture",
-    objective: "Afficher le contenu avec cat",
-    description: "Pour lire un fichier, utilise `cat nom_fichier`. C'est comme l'ouvrir dans un éditeur.",
-    commands: ['cat', 'less'],
+    objective: "Afficher le contenu d'un fichier avec cat",
+    description: "Pour lire un fichier, utilise `cat nom_fichier`. Tu peux d'abord faire `ls` pour voir les fichiers disponibles.",
+    commands: ['cat', 'ls'],
     hints: [
-      "cat password.txt pour lire le fichier",
-      "less est utile pour les gros fichiers"
+      "Tape `ls` pour voir les fichiers disponibles.",
+      "Tape `cat password.txt` pour afficher le contenu du fichier."
     ],
     fileSystem: {
       'password.txt': 'Le mot de passe secret est : TERMINAL_MASTER',
@@ -115,13 +115,13 @@ export const levels: Level[] = [
     title: "Navigation profonde",
     difficulty: 'beginner',
     category: "Navigation",
-    objective: "Maîtriser cd .. et l'arborescence",
-    description: "Navigue dans une arborescence complexe. `cd ..` remonte d'un niveau.",
-    commands: ['cd', 'pwd', 'ls'],
+    objective: "Naviguer jusqu'au dossier work et lire le flag",
+    description: "Navigue dans une arborescence complexe. `cd ..` remonte d'un niveau. Utilise `ls` à chaque étape pour voir ce qu'il y a.",
+    commands: ['cd', 'pwd', 'ls', 'cat'],
     hints: [
-      "cd .. pour remonter",
-      "cd nom_dossier pour descendre",
-      "pwd pour savoir où tu es"
+      "Commence par `ls` pour voir le contenu du dossier courant.",
+      "`cd nom_dossier` pour descendre, `cd ..` pour remonter.",
+      "Le flag est dans `home/user/documents/work/flag.txt`."
     ],
     fileSystem: {
       'home': {
@@ -135,29 +135,32 @@ export const levels: Level[] = [
       }
     },
     validation: [
-      { type: 'command', value: 'cd work', description: 'Atteindre le dossier work' }
+      { type: 'command', value: 'cd work', description: 'Atteindre le dossier work' },
+      { type: 'command', value: 'cat flag.txt', description: 'Lire le flag' }
     ],
-    story: "🏔️ Le trésor est au fond de l'arborescence. Descends jusqu'au bout !"
+    story: "🏔️ Le trésor est au fond de l'arborescence. Descends jusqu'au bout et lis le flag !"
   },
   {
     id: 6,
     title: "Permissions basiques",
     difficulty: 'beginner',
     category: "Permissions",
-    objective: "Comprendre chmod",
-    description: "Les fichiers ont des permissions. `chmod +r` ajoute la permission de lecture.",
-    commands: ['chmod', 'cat'],
+    objective: "Utiliser chmod pour débloquer un fichier, puis le lire",
+    description: "Les fichiers ont des permissions. `chmod +r fichier` ajoute la permission de lecture. Sans elle, `cat` affiche une erreur.",
+    commands: ['chmod', 'cat', 'ls'],
     hints: [
-      "chmod +r fichier.txt pour rendre lisible",
-      "Ensuite utilise cat pour lire"
+      "`ls -la` pour voir les permissions (la colonne `-rw-r--r--`).",
+      "`chmod +r locked.txt` pour ajouter la permission de lecture.",
+      "Ensuite `cat locked.txt` pour lire le contenu débloqué."
     ],
     fileSystem: {
-      'locked.txt': '[PERMISSION_DENIED] Contenu : PASSWORD_IS_CHMOD_MASTER'
+      'locked.txt': 'Contenu secret : PASSWORD_IS_CHMOD_MASTER'
     },
     validation: [
-      { type: 'command', value: 'chmod +r locked.txt', description: 'Rendre le fichier lisible' }
+      { type: 'command', value: 'chmod +r locked.txt', description: 'Rendre le fichier lisible avec chmod' },
+      { type: 'command', value: 'cat locked.txt', description: 'Lire le fichier débloqué' }
     ],
-    story: "🔒 Un fichier est verrouillé. Change ses permissions pour le lire !"
+    story: "🔒 Un fichier est verrouillé. Change ses permissions puis lis son contenu !"
   },
   {
     id: 7,
