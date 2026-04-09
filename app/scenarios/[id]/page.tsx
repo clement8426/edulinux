@@ -1,13 +1,42 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { scenarios, getScenarioCategoryIcon, getScenarioCategoryLabel, getScenarioCategoryColor } from '@/data/scenarios';
 import { useProgress } from '@/hooks/useProgress';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import TutorialOverlay, { TutorialStep } from '@/components/TutorialOverlay';
 
 const RealTerminal = dynamic(() => import('@/components/RealTerminal'), { ssr: false });
+
+const TUTORIAL_STEPS: TutorialStep[] = [
+  {
+    target: 'scenario-header',
+    title: 'La mission',
+    description: "Chaque scénario simule un cas réel (forensic, intrusion, IR…). Lis le briefing pour comprendre le contexte avant d'agir.",
+  },
+  {
+    target: 'scenario-steps',
+    title: 'Les étapes',
+    description: "Le scénario se déroule en étapes séquentielles. Chaque étape débloque la suivante une fois ses objectifs accomplis.",
+  },
+  {
+    target: 'scenario-objective',
+    title: "L'objectif de l'étape",
+    description: "Lis l'objectif et la liste de validations avant de commencer. Chaque étape a son propre environnement dans le terminal.",
+  },
+  {
+    target: 'scenario-notes',
+    title: 'Tes notes',
+    description: "Prends des notes ici : IPs trouvées, mots de passe, flags, commandes utiles. Sauvegardées automatiquement.",
+  },
+  {
+    target: 'scenario-terminal',
+    title: 'Le terminal',
+    description: "C'est ici que tu travailles. Chaque étape repart d'un environnement propre avec ses propres fichiers.",
+  },
+];
 
 export default function ScenarioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -22,6 +51,13 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   const [stepAllDone, setStepAllDone] = useState(false);
   const [terminalKey, setTerminalKey] = useState(0);
   const [showMobileInfo, setShowMobileInfo] = useState(false);
+  const [activeTab, setActiveTab] = useState<'mission' | 'notes'>('mission');
+  const [notes, setNotes] = useState('');
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const resizingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startWRef = useRef(320);
 
   useEffect(() => {
     if (!scenario) return;
@@ -32,12 +68,53 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Computed values — safe with optional chaining so hooks below can run unconditionally
+  // Load notes
+  useEffect(() => {
+    const saved = localStorage.getItem(`notes-scenario-${scenarioId}`);
+    if (saved) setNotes(saved);
+  }, [scenarioId]);
+
+  // Auto-show tutorial on first visit
+  useEffect(() => {
+    const seen = localStorage.getItem('tutorial-scenario-seen');
+    if (!seen) {
+      const timer = setTimeout(() => {
+        setShowTutorial(true);
+        localStorage.setItem('tutorial-scenario-seen', '1');
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Resizable sidebar
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = e.clientX - startXRef.current;
+      setSidebarWidth(Math.max(220, Math.min(600, startWRef.current + delta)));
+    };
+    const onUp = () => { resizingRef.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    resizingRef.current = true;
+    startXRef.current = e.clientX;
+    startWRef.current = sidebarWidth;
+    e.preventDefault();
+  };
+
+  // Derived values — with null safety so hooks below can run unconditionally
   const totalSteps = scenario?.steps.length ?? 0;
   const nextStepIdx = currentStepIdx + 1 < totalSteps ? currentStepIdx + 1 : null;
   const nextStep = nextStepIdx !== null ? scenario?.steps[nextStepIdx] ?? null : null;
 
-  // All hooks MUST be called before any conditional return (Rules of Hooks)
+  // All hooks BEFORE conditional returns
   const handleNextStep = useCallback(() => {
     if (nextStepIdx === null) return;
     setCurrentStepIdx(nextStepIdx);
@@ -52,6 +129,11 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     setStepAllDone(stepsDone.has(scenario.steps[idx].id));
     setTerminalKey(k => k + 1);
   }, [stepsDone, scenario, currentStepIdx]);
+
+  const handleNotes = (v: string) => {
+    setNotes(v);
+    localStorage.setItem(`notes-scenario-${scenarioId}`, v);
+  };
 
   // Conditional returns AFTER all hooks
   if (!scenario) {
@@ -95,13 +177,13 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  // Info content — shared between desktop sidebar and mobile overlay
-  const infoContent = (
-    <>
+  // Mission panel content
+  const missionPanel = (
+    <div className="space-y-4 p-5">
       {/* Scenario header */}
-      <div>
+      <div data-tutorial="scenario-header">
         <h1 className="text-base font-bold text-white">{scenario.title}</h1>
-        <p className="text-gray-600 text-xs mt-0.5 leading-relaxed">{scenario.description}</p>
+        <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">{scenario.description}</p>
         <div className="flex gap-3 mt-2 text-xs text-gray-600">
           <span className="text-[#a3e635]">+{scenario.xpReward} XP</span>
           <span>⏱ {scenario.duration}</span>
@@ -114,9 +196,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           onClick={() => setShowBriefing(!showBriefing)}
           className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-white/2 transition-colors"
         >
-          <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">
-            Briefing mission
-          </span>
+          <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Briefing mission</span>
           <span className="text-gray-600 text-xs">{showBriefing ? '▾' : '▸'}</span>
         </button>
         {showBriefing && (
@@ -129,7 +209,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Steps navigation */}
-      <div>
+      <div data-tutorial="scenario-steps">
         <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-2">Étapes</p>
         <div className="space-y-1.5">
           {scenario.steps.map((step, i) => {
@@ -163,7 +243,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Current step details */}
-      <div className="border border-white/5 rounded p-4 space-y-3">
+      <div data-tutorial="scenario-objective" className="border border-white/5 rounded p-4 space-y-3">
         <div>
           <p className="text-white text-sm font-bold">{currentStep.title}</p>
           <p className="text-gray-600 text-xs mt-0.5">Étape {currentStepIdx + 1} sur {totalSteps}</p>
@@ -206,11 +286,34 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           {nextStep.title} →
         </button>
       )}
-    </>
+    </div>
+  );
+
+  // Notes panel
+  const notesPanel = (
+    <div data-tutorial="scenario-notes" className="p-5 flex flex-col h-full">
+      <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-3">
+        Notes — {scenario.title}
+      </p>
+      <textarea
+        value={notes}
+        onChange={e => handleNotes(e.target.value)}
+        placeholder={`Tes notes pour ce scénario...\n\nExemples :\n- IPs / ports découverts\n- Mots de passe trouvés\n- Flags collectés\n- Commandes clés`}
+        className="flex-1 min-h-[300px] lg:min-h-0 lg:flex-1 w-full bg-black/40 border border-white/8 rounded p-3 text-gray-300 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:border-[#a3e635]/30 placeholder:text-gray-700 transition-colors"
+        spellCheck={false}
+      />
+      {notes && (
+        <p className="text-gray-700 text-xs mt-2 text-right">{notes.length} caractères · sauvegardé</p>
+      )}
+    </div>
   );
 
   return (
     <div className="h-screen overflow-hidden bg-[#0a0e17] text-white font-mono flex flex-col">
+      {/* Tutorial */}
+      {showTutorial && (
+        <TutorialOverlay steps={TUTORIAL_STEPS} onClose={() => setShowTutorial(false)} />
+      )}
 
       {/* Nav */}
       <nav className="border-b border-white/5 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
@@ -219,6 +322,13 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           <span className="hidden sm:inline">scénarios</span>
         </Link>
         <div className="flex items-center gap-3 text-xs">
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="text-gray-600 hover:text-[#a3e635] border border-white/8 hover:border-[#a3e635]/30 px-2.5 py-1 rounded text-xs transition-all"
+            title="Revoir le tutoriel"
+          >
+            ? Tuto
+          </button>
           <span className={`px-2 py-0.5 rounded border text-xs ${getScenarioCategoryColor(scenario.category)}`}>
             {getScenarioCategoryIcon(scenario.category)}
             <span className="hidden sm:inline ml-1">{getScenarioCategoryLabel(scenario.category)}</span>
@@ -249,15 +359,47 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Main */}
-      <div className="flex-1 overflow-hidden flex flex-col lg:grid lg:grid-cols-[300px_1fr]">
+      <div className="flex-1 overflow-hidden flex">
+        {/* Sidebar — desktop only, resizable */}
+        <div
+          className="hidden lg:flex flex-col border-r border-white/5 overflow-hidden flex-shrink-0"
+          style={{ width: sidebarWidth }}
+        >
+          {/* Tab bar */}
+          <div className="flex border-b border-white/5 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('mission')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors ${
+                activeTab === 'mission' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600 hover:text-gray-400'
+              }`}
+            >
+              Mission
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors relative ${
+                activeTab === 'notes' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600 hover:text-gray-400'
+              }`}
+            >
+              Notes
+              {notes && <span className="absolute top-1.5 right-3 w-1.5 h-1.5 rounded-full bg-[#a3e635]" />}
+            </button>
+          </div>
 
-        {/* Sidebar — desktop only */}
-        <div className="hidden lg:block border-r border-white/5 overflow-y-auto p-5 space-y-4">
-          {infoContent}
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'mission' ? missionPanel : notesPanel}
+          </div>
         </div>
 
-        {/* Terminal — always mounted */}
-        <div className="flex-1 overflow-hidden p-2 lg:p-3">
+        {/* Resize handle — desktop only */}
+        <div
+          className="hidden lg:block w-1 cursor-col-resize flex-shrink-0 hover:bg-[#a3e635]/20 transition-colors"
+          onMouseDown={handleResizeStart}
+        />
+
+        {/* Terminal */}
+        <div data-tutorial="scenario-terminal" className="flex-1 min-w-0 overflow-hidden p-2 lg:p-3">
           <RealTerminal
             key={`${scenarioId}-${currentStepIdx}-${terminalKey}`}
             id={scenarioId * 100 + currentStep.id}
@@ -292,8 +434,28 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
               ✕
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {infoContent}
+          {/* Mobile tabs */}
+          <div className="flex border-b border-white/5 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('mission')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors ${
+                activeTab === 'mission' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600'
+              }`}
+            >
+              Mission
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors relative ${
+                activeTab === 'notes' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600'
+              }`}
+            >
+              Notes
+              {notes && <span className="absolute top-1.5 right-6 w-1.5 h-1.5 rounded-full bg-[#a3e635]" />}
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'mission' ? missionPanel : notesPanel}
           </div>
         </div>
       )}

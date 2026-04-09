@@ -1,11 +1,12 @@
 'use client';
 
-import { use, useState, useCallback } from 'react';
+import { use, useState, useCallback, useEffect, useRef } from 'react';
 import { levels, getDifficultyEmoji } from '@/data/levels';
 import { useProgress } from '@/hooks/useProgress';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import TutorialOverlay, { TutorialStep } from '@/components/TutorialOverlay';
 
 const RealTerminal = dynamic(() => import('@/components/RealTerminal'), { ssr: false });
 
@@ -16,20 +17,102 @@ const DIFF_COLOR: Record<string, string> = {
   beginner: 'text-[#a3e635]', intermediate: 'text-yellow-400', advanced: 'text-red-400',
 };
 
+const TUTORIAL_STEPS: TutorialStep[] = [
+  {
+    target: 'level-objective',
+    title: "L'objectif",
+    description: "Commence toujours par lire l'objectif. Il décrit exactement ce que tu dois accomplir pour valider le niveau.",
+  },
+  {
+    target: 'level-validation',
+    title: "À valider",
+    description: "Ces étapes s'affichent en vert au fur et à mesure de ta progression. Accomplis-les dans l'ordre indiqué.",
+  },
+  {
+    target: 'level-hints',
+    title: "Les indices",
+    description: "Bloqué ? Ouvre les indices. Ils te guident sans tout révéler — entraîne-toi à chercher avant de les consulter.",
+  },
+  {
+    target: 'level-notes',
+    title: "Tes notes",
+    description: "Prends des notes ici : commandes découvertes, flags, astuces. Elles sont sauvegardées automatiquement par niveau.",
+  },
+  {
+    target: 'level-terminal',
+    title: "Le terminal",
+    description: "Tape tes commandes Linux ici. Utilise Tab pour l'autocomplétion et ↑ pour naviguer dans l'historique.",
+  },
+];
+
 export default function LevelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const levelId = parseInt(id);
   const level = levels.find(l => l.id === levelId);
   const { completeLevel, isLevelUnlocked } = useProgress();
   const router = useRouter();
+
   const [showHints, setShowHints] = useState(false);
   const [showMobileInfo, setShowMobileInfo] = useState(false);
+  const [activeTab, setActiveTab] = useState<'info' | 'notes'>('info');
+  const [notes, setNotes] = useState('');
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const resizingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startWRef = useRef(300);
+
+  // Load notes from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`notes-level-${levelId}`);
+    if (saved) setNotes(saved);
+  }, [levelId]);
+
+  // Auto-show tutorial on first visit
+  useEffect(() => {
+    const seen = localStorage.getItem('tutorial-level-seen');
+    if (!seen) {
+      const timer = setTimeout(() => {
+        setShowTutorial(true);
+        localStorage.setItem('tutorial-level-seen', '1');
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Resizable sidebar (desktop)
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = e.clientX - startXRef.current;
+      setSidebarWidth(Math.max(220, Math.min(560, startWRef.current + delta)));
+    };
+    const onUp = () => { resizingRef.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    resizingRef.current = true;
+    startXRef.current = e.clientX;
+    startWRef.current = sidebarWidth;
+    e.preventDefault();
+  };
 
   const handleAllComplete = useCallback(() => {
     completeLevel(levelId);
     if (levelId < levels.length) router.push(`/levels/${levelId + 1}`);
     else router.push('/levels');
   }, [completeLevel, levelId, router]);
+
+  const handleNotes = (v: string) => {
+    setNotes(v);
+    localStorage.setItem(`notes-level-${levelId}`, v);
+  };
 
   if (!level) {
     return (
@@ -57,9 +140,9 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  // Info content — shared between desktop sidebar and mobile overlay
-  const infoContent = (
-    <>
+  // Info panel — shared between desktop sidebar and mobile overlay
+  const infoPanel = (
+    <div className="space-y-4 p-5">
       {/* Title */}
       <div>
         <span className="text-[#a3e635] text-xs tracking-widest font-bold">
@@ -70,7 +153,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {/* Objective */}
-      <div className="border border-[#a3e635]/20 bg-[#a3e635]/5 rounded p-3">
+      <div data-tutorial="level-objective" className="border border-[#a3e635]/20 bg-[#a3e635]/5 rounded p-3">
         <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-1">Objectif</p>
         <p className="text-gray-200 text-sm leading-relaxed">{level.objective}</p>
       </div>
@@ -102,7 +185,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {/* Validations */}
-      <div>
+      <div data-tutorial="level-validation">
         <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-2">À valider</p>
         <ul className="space-y-1.5">
           {level.validation.map((rule, i) => (
@@ -116,7 +199,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
 
       {/* Hints */}
       {level.hints && level.hints.length > 0 && (
-        <div>
+        <div data-tutorial="level-hints">
           <button
             onClick={() => setShowHints(!showHints)}
             className="text-gray-600 text-xs font-bold uppercase tracking-widest hover:text-gray-400 transition-colors flex items-center gap-1.5 w-full text-left"
@@ -132,12 +215,34 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
           )}
         </div>
       )}
-    </>
+    </div>
+  );
+
+  // Notes panel
+  const notesPanel = (
+    <div data-tutorial="level-notes" className="p-5 flex flex-col h-full">
+      <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-3">
+        Notes — Niveau {String(levelId).padStart(2, '0')}
+      </p>
+      <textarea
+        value={notes}
+        onChange={e => handleNotes(e.target.value)}
+        placeholder={`Tes notes pour ce niveau...\n\nExemples :\n- commandes utiles\n- flags trouvés\n- idées à tester`}
+        className="flex-1 min-h-[300px] lg:min-h-0 lg:flex-1 w-full bg-black/40 border border-white/8 rounded p-3 text-gray-300 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:border-[#a3e635]/30 placeholder:text-gray-700 transition-colors"
+        spellCheck={false}
+      />
+      {notes && (
+        <p className="text-gray-700 text-xs mt-2 text-right">{notes.length} caractères · sauvegardé</p>
+      )}
+    </div>
   );
 
   return (
-    // h-screen + overflow-hidden = layout strictement dans la viewport, pas de scroll page
     <div className="h-screen overflow-hidden bg-[#0a0e17] text-white font-mono flex flex-col">
+      {/* Tutorial */}
+      {showTutorial && (
+        <TutorialOverlay steps={TUTORIAL_STEPS} onClose={() => setShowTutorial(false)} />
+      )}
 
       {/* Nav */}
       <nav className="border-b border-white/5 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
@@ -145,7 +250,14 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
           <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
           <span className="hidden sm:inline">niveaux</span>
         </Link>
-        <div className="flex items-center gap-3 text-xs text-gray-600">
+        <div className="flex items-center gap-3 text-xs">
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="text-gray-600 hover:text-[#a3e635] border border-white/8 hover:border-[#a3e635]/30 px-2.5 py-1 rounded text-xs transition-all"
+            title="Revoir le tutoriel"
+          >
+            ? Tuto
+          </button>
           <span className={DIFF_COLOR[level.difficulty]}>
             {getDifficultyEmoji(level.difficulty)}
             <span className="hidden sm:inline ml-1">{DIFF_LABEL[level.difficulty]}</span>
@@ -157,7 +269,7 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
         </div>
       </nav>
 
-      {/* Mobile compact strip — title + info button */}
+      {/* Mobile compact strip */}
       <div className="lg:hidden border-b border-white/5 bg-[#060a10] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="min-w-0 mr-3">
           <p className="text-white text-sm font-bold truncate leading-tight">{level.title}</p>
@@ -171,16 +283,48 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
         </button>
       </div>
 
-      {/* Main area: mobile = terminal full height / desktop = sidebar + terminal */}
-      <div className="flex-1 overflow-hidden flex flex-col lg:grid lg:grid-cols-[300px_1fr]">
+      {/* Main area */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Sidebar — desktop only, resizable */}
+        <div
+          className="hidden lg:flex flex-col border-r border-white/5 overflow-hidden flex-shrink-0"
+          style={{ width: sidebarWidth }}
+        >
+          {/* Tab bar */}
+          <div className="flex border-b border-white/5 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('info')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors ${
+                activeTab === 'info' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600 hover:text-gray-400'
+              }`}
+            >
+              Info
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors relative ${
+                activeTab === 'notes' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600 hover:text-gray-400'
+              }`}
+            >
+              Notes
+              {notes && <span className="absolute top-1.5 right-3 w-1.5 h-1.5 rounded-full bg-[#a3e635]" />}
+            </button>
+          </div>
 
-        {/* Sidebar — desktop only */}
-        <div className="hidden lg:block border-r border-white/5 overflow-y-auto p-5 space-y-4">
-          {infoContent}
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'info' ? infoPanel : notesPanel}
+          </div>
         </div>
 
-        {/* Terminal — always mounted, always visible */}
-        <div className="flex-1 overflow-hidden p-2 lg:p-3">
+        {/* Resize handle — desktop only */}
+        <div
+          className="hidden lg:block w-1 cursor-col-resize flex-shrink-0 hover:bg-[#a3e635]/20 transition-colors group"
+          onMouseDown={handleResizeStart}
+        />
+
+        {/* Terminal */}
+        <div data-tutorial="level-terminal" className="flex-1 min-w-0 overflow-hidden p-2 lg:p-3">
           <RealTerminal
             key={levelId}
             id={levelId}
@@ -193,9 +337,10 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
         </div>
       </div>
 
-      {/* Mobile info overlay — fixed, z-50, slides over terminal */}
+      {/* Mobile info overlay */}
       {showMobileInfo && (
         <div className="lg:hidden fixed inset-0 z-50 bg-[#0a0e17] flex flex-col">
+          {/* Header */}
           <div className="flex items-center justify-between border-b border-white/5 px-5 py-3 flex-shrink-0 bg-[#060a10]">
             <div>
               <span className="text-[#a3e635] text-xs font-bold tracking-widest">
@@ -210,8 +355,28 @@ export default function LevelPage({ params }: { params: Promise<{ id: string }> 
               ✕
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {infoContent}
+          {/* Tabs */}
+          <div className="flex border-b border-white/5 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('info')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors ${
+                activeTab === 'info' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600'
+              }`}
+            >
+              Info
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`flex-1 text-xs py-2.5 font-bold uppercase tracking-widest transition-colors relative ${
+                activeTab === 'notes' ? 'text-white border-b-2 border-[#a3e635]' : 'text-gray-600'
+              }`}
+            >
+              Notes
+              {notes && <span className="absolute top-1.5 right-6 w-1.5 h-1.5 rounded-full bg-[#a3e635]" />}
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'info' ? infoPanel : notesPanel}
           </div>
         </div>
       )}
