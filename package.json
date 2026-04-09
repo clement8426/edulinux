@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
-    "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-x64/spawn-helper 2>/dev/null || true",
+    "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-x64/spawn-helper 2>/dev/null || true; chmod +x node_modules/node-pty/prebuilds/linux-x64/spawn-helper 2>/dev/null || true",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

@@ -127,7 +127,9 @@ export default function RealTerminal({
       observer.observe(containerRef.current);
 
       // ── WebSocket ──────────────────────────────────────────────────────────
-      const wsUrl = `ws://${window.location.hostname}:${window.location.port}/pty`;
+      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const port = window.location.port ? `:${window.location.port}` : '';
+      const wsUrl = `${proto}://${window.location.hostname}${port}/pty`;
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
