@@ -14,8 +14,8 @@ interface Props {
 }
 
 const PAD = 10;
-const TOOLTIP_W = 320;
-const TOOLTIP_H = 170;
+const TOOLTIP_W = 300;
+const TOOLTIP_H = 210; // hauteur max estimée du tooltip (utilisée pour le clamping)
 
 export default function TutorialOverlay({ steps, onClose }: Props) {
   const [idx, setIdx] = useState(0);
@@ -90,11 +90,11 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
     if (inLeftHalf && rightStart + TOOLTIP_W < win.w - 16) {
       // Place to the right of the element (in the terminal area)
       tLeft = rightStart;
-      tTop  = Math.max(16, Math.min(sTop, win.h - TOOLTIP_H - 16));
+      tTop  = Math.max(16, Math.min(sTop + sH / 2 - TOOLTIP_H / 2, win.h - TOOLTIP_H - 16));
     } else if (!inLeftHalf && leftStart > 16) {
       // Place to the left
       tLeft = leftStart;
-      tTop  = Math.max(16, Math.min(sTop, win.h - TOOLTIP_H - 16));
+      tTop  = Math.max(16, Math.min(sTop + sH / 2 - TOOLTIP_H / 2, win.h - TOOLTIP_H - 16));
     } else {
       // Fallback: below then above then center
       tLeft = Math.max(16, Math.min(sLeft, win.w - TOOLTIP_W - 16));
@@ -128,8 +128,8 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
 
       {/* Tooltip card */}
       <div
-        className="absolute bg-[#0d1117] border border-[#a3e635]/30 rounded-xl p-5 shadow-2xl transition-all duration-300"
-        style={{ width: TOOLTIP_W, top: tTop, left: tLeft }}
+        className="absolute bg-[#0d1117] border border-[#a3e635]/30 rounded-xl p-5 shadow-2xl transition-all duration-300 overflow-y-auto"
+        style={{ width: TOOLTIP_W, top: tTop, left: tLeft, maxHeight: win.h - tTop - 16 }}
       >
         {/* Dot progress */}
         <div className="flex items-center gap-1.5 mb-3">
