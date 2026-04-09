@@ -32,6 +32,28 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Computed values — safe with optional chaining so hooks below can run unconditionally
+  const totalSteps = scenario?.steps.length ?? 0;
+  const nextStepIdx = currentStepIdx + 1 < totalSteps ? currentStepIdx + 1 : null;
+  const nextStep = nextStepIdx !== null ? scenario?.steps[nextStepIdx] ?? null : null;
+
+  // All hooks MUST be called before any conditional return (Rules of Hooks)
+  const handleNextStep = useCallback(() => {
+    if (nextStepIdx === null) return;
+    setCurrentStepIdx(nextStepIdx);
+    setStepAllDone(false);
+    setTerminalKey(k => k + 1);
+  }, [nextStepIdx]);
+
+  const jumpToStep = useCallback((idx: number) => {
+    if (!scenario) return;
+    if (!stepsDone.has(scenario.steps[idx].id) && idx !== currentStepIdx) return;
+    setCurrentStepIdx(idx);
+    setStepAllDone(stepsDone.has(scenario.steps[idx].id));
+    setTerminalKey(k => k + 1);
+  }, [stepsDone, scenario, currentStepIdx]);
+
+  // Conditional returns AFTER all hooks
   if (!scenario) {
     return (
       <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center font-mono">
@@ -59,10 +81,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   }
 
   const currentStep = scenario.steps[currentStepIdx];
-  const totalSteps = scenario.steps.length;
   const progressPct = Math.round((stepsDone.size / totalSteps) * 100);
-  const nextStepIdx = currentStepIdx + 1 < totalSteps ? currentStepIdx + 1 : null;
-  const nextStep = nextStepIdx !== null ? scenario.steps[nextStepIdx] : null;
 
   const handleStepAllComplete = () => {
     const newDone = new Set(stepsDone);
@@ -75,20 +94,6 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
       router.push('/scenarios');
     }
   };
-
-  const handleNextStep = useCallback(() => {
-    if (nextStepIdx === null) return;
-    setCurrentStepIdx(nextStepIdx);
-    setStepAllDone(false);
-    setTerminalKey(k => k + 1);
-  }, [nextStepIdx]);
-
-  const jumpToStep = useCallback((idx: number) => {
-    if (!stepsDone.has(scenario.steps[idx].id) && idx !== currentStepIdx) return;
-    setCurrentStepIdx(idx);
-    setStepAllDone(stepsDone.has(scenario.steps[idx].id));
-    setTerminalKey(k => k + 1);
-  }, [stepsDone, scenario.steps, currentStepIdx]);
 
   // Info content — shared between desktop sidebar and mobile overlay
   const infoContent = (
