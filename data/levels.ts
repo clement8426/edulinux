@@ -351,7 +351,7 @@ export const levels: Level[] = [
       "La validation vérifie que tu utilises bien `base64 -d` pour obtenir le message."
     ],
     fileSystem: {
-      'encoded.txt': 'VEVSTUlOQUxfREVDT0RFUl8yMDI0',
+      'encoded.txt': 'VEVSTUlOQUxfREVDT0RFUl8yMDI0Cg==',
       'info.txt': 'Le fichier encoded.txt contient un message secret encodé en base64. Décode-le pour découvrir le mot de passe !'
     },
     validation: [

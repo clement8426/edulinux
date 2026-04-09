@@ -127,6 +127,12 @@ function matchesRule(cmd, rule) {
     if (vFlags.length > 0 && vFlags.every(f => cFlagsSet.has(f))) return true;
   }
 
+  // Pipe chains : vérifier chaque segment AVANT le return sur v.includes(' ')
+  // (sinon "cat file | base64 -d" ne matcherait jamais la règle "base64 -d")
+  if (c.includes('|')) {
+    return c.split('|').some(part => matchesRule(part.trim(), rule));
+  }
+
   // Rule has arguments → accept exact match or starts with
   if (v.includes(' ')) {
     return c === v || c.startsWith(v + ' ') || c.startsWith(v);
@@ -136,10 +142,6 @@ function matchesRule(cmd, rule) {
   if (c.startsWith(v + ' ')) return true;
   if (c === v && NO_ARG_COMMANDS.has(v)) return true;
 
-  // Pipe chains: check each segment
-  if (c.includes('|')) {
-    return c.split('|').some(part => matchesRule(part.trim(), rule));
-  }
   return false;
 }
 

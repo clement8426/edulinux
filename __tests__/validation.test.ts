@@ -61,6 +61,11 @@ function matchesRule(cmd: string, rule: ValidationRule): boolean {
     if (vFlags.length > 0 && vFlags.every(f => cFlagsSet.has(f))) return true;
   }
 
+  // Pipes : vérifier chaque segment AVANT le return sur v.includes(' ')
+  if (c.includes('|')) {
+    return c.split('|').some(part => matchesRule(part.trim(), rule));
+  }
+
   // Règle avec arguments → match exact ou startsWith
   if (v.includes(' ')) {
     return c === v || c.startsWith(v + ' ') || c.startsWith(v);
@@ -70,10 +75,6 @@ function matchesRule(cmd: string, rule: ValidationRule): boolean {
   if (c.startsWith(v + ' ')) return true;
   if (c === v && NO_ARG_COMMANDS.has(v)) return true;
 
-  // Pipes : vérifier chaque segment
-  if (c.includes('|')) {
-    return c.split('|').some(part => matchesRule(part.trim(), rule));
-  }
   return false;
 }
 
@@ -254,10 +255,20 @@ describe('matchesRule — commandes spécifiques EduLinux', () => {
     expect(matchesRule('cat /root/flag.txt', { type: 'command', value: 'cat' })).toBe(true);
   });
 
-  test('grep avec pipe', () => {
+  test('grep avec pipe (règle bare)', () => {
     const rule = { type: 'command' as const, value: 'grep' };
     expect(matchesRule('cat auth.log | grep Failed', rule)).toBe(true);
     expect(matchesRule('grep Failed auth.log | wc -l', rule)).toBe(true);
+  });
+
+  test('règle avec espace dans un pipe — base64 -d (bug fix)', () => {
+    const rule = { type: 'command' as const, value: 'base64 -d' };
+    // variante pipe : doit valider
+    expect(matchesRule('cat encoded.txt | base64 -d', rule)).toBe(true);
+    // variante directe : doit valider
+    expect(matchesRule('base64 -d encoded.txt', rule)).toBe(true);
+    // sans base64 : ne doit pas valider
+    expect(matchesRule('cat encoded.txt', rule)).toBe(false);
   });
 
   test('curl -I pour inspection de headers', () => {
