@@ -4,6 +4,7 @@ import { levels, getDifficultyEmoji } from '@/data/levels';
 import { useProgress } from '@/hooks/useProgress';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Footer from '@/components/Footer';
 
 const CHAPTERS = [
   { range: [1,  10], label: 'Terminal & SSH',       tag: '01–10' },
@@ -171,6 +172,7 @@ export default function LevelsPage() {
           </Link>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

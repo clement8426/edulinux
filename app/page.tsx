@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { levels } from '@/data/levels';
 import { scenarios } from '@/data/scenarios';
+import Footer from '@/components/Footer';
 
 // Computed from data at build time
 const totalLevels = levels.length;
@@ -169,15 +170,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 px-4 sm:px-6 md:px-16 py-5 sm:py-6 flex items-center justify-between gap-4">
-        <span className="text-[#a3e635] font-bold text-xs tracking-widest">EDULINUX</span>
-        <div className="flex gap-6 text-gray-600 text-xs">
-          <Link href="/levels" className="hover:text-white transition-colors">niveaux</Link>
-          <Link href="/scenarios" className="hover:text-white transition-colors">scénarios</Link>
-        </div>
-        <span className="text-gray-700 text-xs hidden sm:inline">Duolingo × OverTheWire Bandit</span>
-      </footer>
+      <Footer />
     </div>
   );
 }

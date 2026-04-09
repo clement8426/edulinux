@@ -4,6 +4,7 @@ import { scenarios, getScenarioCategoryLabel } from '@/data/scenarios';
 import { useProgress } from '@/hooks/useProgress';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Footer from '@/components/Footer';
 
 const CAT_COLOR: Record<string, string> = {
   forensic: 'text-orange-400 border-orange-400/20',
@@ -136,6 +137,7 @@ export default function ScenariosPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
