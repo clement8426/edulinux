@@ -36,7 +36,7 @@ export default function TutorialOverlay({ steps, onClose }: Props) {
   useEffect(() => {
     const el = document.querySelector(`[data-tutorial="${step.target}"]`);
     if (!el) { setHl(null); return; }
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    el.scrollIntoView({ block: 'start', behavior: 'smooth' });
     const timer = setTimeout(() => {
       const r = el.getBoundingClientRect();
       setHl({ top: r.top, left: r.left, w: r.width, h: r.height });
