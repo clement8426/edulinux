@@ -86,7 +86,13 @@ export function useProgress() {
     fetch('/api/progress')
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        if (!data?.progress) return;
+        if (!data?.progress) {
+          // Pas encore de progression côté serveur → on y pousse le local
+          if (local.completedLevels.length > 0 || local.totalXP > 0) {
+            pushProgressToServer(local);
+          }
+          return;
+        }
         const remote: UserProgress = {
           completedLevels: data.progress.completed_levels ?? [],
           currentLevel: data.progress.current_level ?? 1,
@@ -98,6 +104,14 @@ export function useProgress() {
         const merged = mergeProgress(local, remote);
         setProgress(merged);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        // Si le local avait plus de données, on met le serveur à jour
+        const localIsAhead =
+          merged.currentLevel > remote.currentLevel ||
+          merged.completedLevels.length > remote.completedLevels.length ||
+          merged.totalXP > remote.totalXP;
+        if (localIsAhead) {
+          pushProgressToServer(merged);
+        }
       })
       .catch(() => {});
   }, []);
