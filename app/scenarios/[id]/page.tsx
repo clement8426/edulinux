@@ -61,7 +61,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   const { id } = use(params);
   const scenarioId = parseInt(id);
   const scenario = scenarios.find(s => s.id === scenarioId);
-  const { completeScenarioStep, completeScenario, isScenarioUnlocked, progress } = useProgress();
+  const { completeScenarioStep, completeScenario, isScenarioUnlocked, progress, loaded } = useProgress();
   const router = useRouter();
 
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
@@ -180,6 +180,17 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
         <div className="text-center">
           <p className="text-red-400 text-sm mb-4">Scénario introuvable</p>
           <Link href="/scenarios" className="text-[#a3e635] hover:underline text-sm">← scénarios</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center font-mono">
+        <div className="text-center">
+          <div className="w-6 h-6 border-2 border-[#a3e635]/30 border-t-[#a3e635] rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-600 text-xs">Chargement…</p>
         </div>
       </div>
     );
