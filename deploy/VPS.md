@@ -103,6 +103,8 @@ docker compose -f docker-compose.prod.yml up -d
 
 4. **Format de `.env.production`** : une variable par ligne, sans espaces autour du `=`, pas de guillemets inutiles, fichier en UTF-8 / LF (pas de CRLF Windows).
 
+5. **`node-pty` / erreur `Cannot find module ... pty.node`** : l’image Docker reconstruit le module natif après `npm prune`. Fais un `git pull` pour avoir le dernier `Dockerfile`, puis `build --no-cache` comme ci-dessus.
+
 ## 5. Nginx + Let’s Encrypt
 
 ```bash

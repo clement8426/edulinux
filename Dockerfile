@@ -19,7 +19,9 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build && npm prune --omit=dev
+# prune retire les devDependencies ; il peut supprimer build/Release de node-pty.
+# Sur Linux il n’y a pas de prebuild npm — le .node est compilé par node-gyp → il faut le régénérer après prune.
+RUN npm run build && npm prune --omit=dev && npm rebuild node-pty
 
 # ─── Runtime ───────────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS runner
@@ -42,8 +44,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/server.js ./server.js
 COPY --from=builder --chown=nodejs:nodejs /app/next.config.ts ./next.config.ts
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
 
-# node-pty (Linux)
-RUN chmod +x node_modules/node-pty/prebuilds/linux-x64/spawn-helper 2>/dev/null || true
+# binaire auxiliaire (chemin selon build Release ou prebuild)
+RUN sh -c 'for f in node_modules/node-pty/build/Release/spawn-helper node_modules/node-pty/prebuilds/linux-x64/spawn-helper; do [ -f "$f" ] && chmod +x "$f"; done' || true
 
 USER nodejs
 EXPOSE 3000
