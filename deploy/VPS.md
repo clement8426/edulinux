@@ -29,7 +29,7 @@ Déconnecte-toi et reconnecte (`ssh deploy@IP`) pour que le groupe `docker` soit
 sudo mkdir -p /opt/edulinux
 sudo chown deploy:deploy /opt/edulinux
 cd /opt/edulinux
-git clone https://github.com/TON_USER/edulinux.git .
+git clone https://github.com/clement8426/edulinux.git .
 ```
 
 ## 3. Fichier d’environnement (secret — jamais dans Git)
@@ -51,7 +51,13 @@ Permissions :
 chmod 600 .env.production
 ```
 
-Docker Compose charge ce fichier au **runtime**. Les `NEXT_PUBLIC_*` sont aussi nécessaires au **build** (voir étape 4).
+Compose lit automatiquement un fichier **`.env`** à la racine pour remplacer `${NEXT_PUBLIC_*}` dans `docker-compose.prod.yml`. Sans ça, le build peut partir avec des clés **vides** et le conteneur plante. Crée un lien :
+
+```bash
+ln -sf .env.production .env
+```
+
+Docker Compose charge `.env.production` au **runtime** (`env_file`). Les `NEXT_PUBLIC_*` doivent aussi être présentes au **build** (via `.env` ou `--env-file`).
 
 ## 4. Build et démarrage
 
@@ -70,6 +76,32 @@ docker compose -f docker-compose.prod.yml ps
 ```
 
 L’app n’écoute que sur **127.0.0.1:3000** (pas exposée sur Internet directement).
+
+### Dépannage — conteneur `Restarting` ou `curl` refuse la connexion
+
+1. **Voir l’erreur réelle** (indispensable) :
+
+```bash
+cd /opt/edulinux
+docker compose -f docker-compose.prod.yml logs edulinux --tail=80
+```
+
+2. **Vérifier que les variables ne sont pas vides** dans le conteneur :
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm --no-deps edulinux env | grep -E 'NEXT_PUBLIC|SUPABASE'
+```
+
+3. **Fichier `.env` pour Compose** : si tu n’as pas fait `ln -sf .env.production .env`, refais le lien puis **rebuild** (les `NEXT_PUBLIC_*` sont figées dans l’image au build) :
+
+```bash
+ln -sf .env.production .env
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d
+```
+
+4. **Format de `.env.production`** : une variable par ligne, sans espaces autour du `=`, pas de guillemets inutiles, fichier en UTF-8 / LF (pas de CRLF Windows).
 
 ## 5. Nginx + Let’s Encrypt
 
