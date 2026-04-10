@@ -41,7 +41,7 @@ COPY --from=builder --chown=nodejs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 COPY --from=builder --chown=nodejs:nodejs /app/data ./data
 COPY --from=builder --chown=nodejs:nodejs /app/server.js ./server.js
-COPY --from=builder --chown=nodejs:nodejs /app/next.config.ts ./next.config.ts
+COPY --from=builder --chown=nodejs:nodejs /app/next.config.mjs ./next.config.mjs
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
 
 # binaire auxiliaire (chemin selon build Release ou prebuild)
