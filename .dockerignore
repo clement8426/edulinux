@@ -1,0 +1,17 @@
+.git
+.github
+.next
+node_modules
+*.md
+!README.md
+.env
+.env.*
+!.env.example
+.env.local
+.env.local.example
+coverage
+.jest-cache
+*.log
+.DS_Store
+terminals
+.cursor
