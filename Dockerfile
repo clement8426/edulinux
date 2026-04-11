@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
+# postinstall exécute scripts/chmod-node-pty-helpers.mjs — doit exister avant npm ci
+COPY scripts/chmod-node-pty-helpers.mjs scripts/chmod-node-pty-helpers.mjs
 RUN npm ci
 
 COPY . .
