@@ -47,6 +47,20 @@ function createFiles(baseDir, fileSystem) {
 
 // ─── Input buffer helpers ─────────────────────────────────────────────────────
 
+/** Bash sur macOS/Linux (prod = Linux dans Docker, local souvent Apple Silicon). */
+function resolveBashPath() {
+  if (process.platform === 'win32') return 'cmd.exe';
+  const candidates = ['/bin/bash', '/usr/local/bin/bash', '/opt/homebrew/bin/bash'];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch {
+      /* ignore */
+    }
+  }
+  return '/bin/bash';
+}
+
 function cleanBuffer(buf) {
   let result = '';
   let i = 0;
@@ -208,9 +222,11 @@ app.prepare().then(() => {
     ws._workDir = null;
 
     function spawnShell(workDir, cols, rows) {
-      const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
+      const shell = resolveBashPath();
       const histFile = path.join(workDir, '.bash_history');
       const bashrcFile = path.join(workDir, '.bashrc');
+      // Chemin brut dans un fichier — évite sed "s|${workDir}|…" si le chemin contient | ou " (bashrc cassé)
+      fs.writeFileSync(path.join(workDir, '.edulinux_home'), workDir, 'utf8');
 
       // Bashrc minimal — PROMPT_COMMAND envoie la dernière commande dans le flux PTY
       // via une séquence OSC invisible (ESC]777;CMD\x07).
@@ -223,9 +239,13 @@ app.prepare().then(() => {
         'HISTFILESIZE=1000',
         'HISTCONTROL=ignoredups',
         `PROMPT_COMMAND='__ec=$(history 1 | sed "s/^ *[0-9]* *//"); printf "\\033]777;%s\\007" "$__ec"; history -a'`,
-        // pwd affiche ~ à la place du répertoire temporaire (plus lisible pour les débutants)
-        `pwd() { command pwd | sed "s|${workDir}|~|g"; }`,
-        // ~/bin en tête de PATH : permet aux niveaux de fournir des commandes simulées (ex: ssh)
+        'pwd() {',
+        '  local p w',
+        '  p=$(command pwd)',
+        '  w=""',
+        '  [ -f "$HOME/.edulinux_home" ] && IFS= read -r w < "$HOME/.edulinux_home"',
+        '  if [ -n "$w" ] && [ "${p#$w}" != "$p" ]; then echo "~${p#$w}"; else echo "$p"; fi',
+        '}',
         `export PATH="$HOME/bin:$PATH"`,
       ].join('\n') + '\n', 'utf8');
 
@@ -233,20 +253,25 @@ app.prepare().then(() => {
         ? []
         : ['--noprofile', '--rcfile', bashrcFile, '-i'];
 
-      ptyProcess = pty.spawn(shell, args, {
-        name: 'xterm-256color',
-        cols: cols || 80,
-        rows: rows || 24,
-        cwd: workDir,
-        env: {
-          ...process.env,
-          HOME: workDir,
-          TERM: 'xterm-256color',
-          COLORTERM: 'truecolor',
-          PATH: (process.env.PATH || '') + ':/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin',
-          LANG: 'en_US.UTF-8',
-        },
-      });
+      try {
+        ptyProcess = pty.spawn(shell, args, {
+          name: 'xterm-256color',
+          cols: cols || 80,
+          rows: rows || 24,
+          cwd: workDir,
+          env: {
+            ...process.env,
+            HOME: workDir,
+            TERM: 'xterm-256color',
+            COLORTERM: 'truecolor',
+            PATH: (process.env.PATH || '') + ':/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin',
+            LANG: process.env.LANG || 'en_US.UTF-8',
+          },
+        });
+      } catch (e) {
+        console.error('[edulinux] pty.spawn failed:', shell, e);
+        throw e;
+      }
 
       // Buffer pour assembler les séquences OSC qui peuvent arriver en plusieurs chunks
       let oscBuf = '';

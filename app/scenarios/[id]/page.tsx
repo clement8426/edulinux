@@ -215,6 +215,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   const progressPct = Math.round((stepsDone.size / totalSteps) * 100);
 
   const handleStepAllComplete = () => {
+    if (stepAllDone) return;
     const newDone = new Set(stepsDone);
     newDone.add(currentStep.id);
     setStepsDone(newDone);

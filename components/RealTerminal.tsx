@@ -43,15 +43,23 @@ export default function RealTerminal({
   const [wsStatus, setWsStatus] = useState<'connecting' | 'ready' | 'error'>('connecting');
   const [errorMsg, setErrorMsg] = useState('');
   const [notifications, setNotifications] = useState<string[]>([]);
+  /** Masque le bouton Continuer après clic ou passage auto */
+  const [continueDismissed, setContinueDismissed] = useState(false);
 
-  // true once the user typed "ok" to proceed — prevents double-fire
-  const okSentRef = useRef(false);
-  // track allDone in a ref so the onData closure can read it without stale capture
+  /** Évite d'appeler onAllComplete deux fois (timer + bouton) */
+  const completionHandledRef = useRef(false);
+  const autoNavigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // track allDone in a ref so WS handlers stay in sync
   const allDoneRef = useRef(false);
 
   // Keep props in ref so WS callbacks always see latest values
   const propsRef = useRef({ validations, hints, fileSystem, onAllComplete });
   propsRef.current = { validations, hints, fileSystem, onAllComplete };
+
+  useEffect(() => {
+    completionHandledRef.current = false;
+    setContinueDismissed(false);
+  }, [id, kind]);
 
   const addNotification = useCallback((msg: string) => {
     setNotifications(prev => [...prev.slice(-4), msg]);
@@ -171,18 +179,27 @@ export default function RealTerminal({
 
         if (msg.type === 'all_complete') {
           allDoneRef.current = true;
-          okSentRef.current = false;
           setAllDone(true);
-          // Affiche le message DANS le terminal — pas de modal
+          setContinueDismissed(false);
           term.write(
             '\r\n' +
             '\x1b[1;32m┌─────────────────────────────────────────┐\x1b[0m\r\n' +
             '\x1b[1;32m│  ★  Tous les objectifs sont complétés !  │\x1b[0m\r\n' +
             '\x1b[1;32m└─────────────────────────────────────────┘\x1b[0m\r\n' +
-            '\x1b[90m  Le shell reste actif — explore librement.\x1b[0m\r\n' +
-            '\x1b[33m  Tape \x1b[1mok\x1b[0m\x1b[33m puis Entrée pour passer à la suite.\x1b[0m\r\n\r\n'
+            '\x1b[90m  Passage automatique à la suite dans quelques secondes…\x1b[0m\r\n' +
+            '\x1b[33m  (Tu peux aussi cliquer sur « Continuer » sous le terminal.)\x1b[0m\r\n\r\n'
           );
-          // onAllComplete est appelé UNIQUEMENT quand l'utilisateur tape "ok"
+          if (autoNavigateTimerRef.current) {
+            clearTimeout(autoNavigateTimerRef.current);
+            autoNavigateTimerRef.current = null;
+          }
+          autoNavigateTimerRef.current = setTimeout(() => {
+            autoNavigateTimerRef.current = null;
+            if (destroyed || completionHandledRef.current) return;
+            completionHandledRef.current = true;
+            setContinueDismissed(true);
+            propsRef.current.onAllComplete?.();
+          }, 2800);
         }
 
         if (msg.type === 'step_ready') {
@@ -210,30 +227,9 @@ export default function RealTerminal({
         if (!destroyed) setWsStatus('connecting');
       };
 
-      // Buffer to detect "ok\r" typed by the user
-      let okBuffer = '';
-
-      // Forward keystrokes to server, intercept "ok" when level is complete
       term.onData((data) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'input', data }));
-        }
-
-        // Accumulate printable chars + detect Enter
-        for (const ch of data) {
-          if (ch === '\r' || ch === '\n') {
-            const typed = okBuffer.trim().toLowerCase();
-            if (typed === 'ok' && allDoneRef.current && !okSentRef.current) {
-              okSentRef.current = true;
-              // Small delay so the shell echoes the Enter before we navigate
-              setTimeout(() => propsRef.current.onAllComplete?.(), 300);
-            }
-            okBuffer = '';
-          } else if (ch === '\x7f' || ch === '\b') {
-            okBuffer = okBuffer.slice(0, -1);
-          } else if (ch >= ' ') {
-            okBuffer += ch;
-          }
         }
       });
 
@@ -242,6 +238,10 @@ export default function RealTerminal({
 
     return () => {
       destroyed = true;
+      if (autoNavigateTimerRef.current) {
+        clearTimeout(autoNavigateTimerRef.current);
+        autoNavigateTimerRef.current = null;
+      }
       wsRef.current?.close();
       termRef.current?.dispose();
       termRef.current = null;
@@ -261,6 +261,18 @@ export default function RealTerminal({
     }));
     onNextStep?.();
   }, [nextStepData, onNextStep]);
+
+  /** Passe à la suite tout de suite (annule le délai auto) */
+  const handleContinueNow = useCallback(() => {
+    if (completionHandledRef.current) return;
+    if (autoNavigateTimerRef.current) {
+      clearTimeout(autoNavigateTimerRef.current);
+      autoNavigateTimerRef.current = null;
+    }
+    completionHandledRef.current = true;
+    setContinueDismissed(true);
+    onAllComplete?.();
+  }, [onAllComplete]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -323,18 +335,30 @@ export default function RealTerminal({
 
       {/* Bottom bar — shown when all objectives complete */}
       {allDone && (
-        <div className="flex-shrink-0 border-t border-[#a3e635]/30 bg-[#0a0e17] px-4 py-2.5 flex items-center justify-between animate-fadeIn">
-          <span className="text-[#a3e635] text-xs font-mono">
-            ★ Objectifs complétés — continue d&apos;explorer ou passe à la suite
+        <div className="flex-shrink-0 border-t border-[#a3e635]/30 bg-[#0a0e17] px-4 py-2.5 flex items-center justify-between gap-3 animate-fadeIn">
+          <span className="text-[#a3e635] text-xs font-mono min-w-0">
+            ★ Objectifs complétés — passage auto ou bouton ci-contre
           </span>
-          {onNextStep && nextStepData ? (
-            <button
-              onClick={handleNextStep}
-              className="bg-[#a3e635] text-black text-xs font-bold px-4 py-1.5 rounded hover:bg-[#bef264] transition-colors"
-            >
-              Étape suivante →
-            </button>
-          ) : null}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!continueDismissed && (
+              <button
+                type="button"
+                onClick={handleContinueNow}
+                className="bg-[#a3e635] text-black text-xs font-bold px-4 py-1.5 rounded hover:bg-[#bef264] transition-colors"
+              >
+                Continuer →
+              </button>
+            )}
+            {onNextStep && nextStepData ? (
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className="border border-[#a3e635]/50 text-[#a3e635] text-xs font-bold px-4 py-1.5 rounded hover:bg-[#a3e635]/10 transition-colors"
+              >
+                Étape suivante →
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

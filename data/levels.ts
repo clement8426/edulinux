@@ -390,6 +390,13 @@ for arg in "$@"; do
   elif echo "$arg" | grep -q "@"; then USER="\${arg%%@*}"; HOST="\${arg##*@}"
   fi
 done
+# Niveau 10 : le bon port est 2222 — sans -p ou mauvais port → échec explicite (pas de faux succès)
+if [ "\${HOST}" = "backup.edulinux.local" ] && [ "\${PORT}" != "2222" ]; then
+  printf "\\033[31m✘ Connexion refusée : mauvais port pour ce serveur de backup.\\033[0m\\n"
+  printf "\\033[33m   Relis instructions.txt : il faut \\033[1m-p 2222\\033[0m\\033[33m (pas le port 22 par défaut).\\033[0m\\n"
+  printf "\\033[90m   Exemple : ssh admin@backup.edulinux.local -p 2222\\033[0m\\n"
+  exit 1
+fi
 printf "ssh: connecting to %s (port %s) as %s...\\n" "\${HOST:-server}" "\${PORT}" "\${USER}"
 sleep 0.8
 printf "The authenticity of host '[%s]:%s' can't be established.\\n" "\${HOST}" "\${PORT}"
