@@ -15,6 +15,7 @@ const {
   generateWorkDir,
   isAllowedOrigin,
 } = require('./lib/security');
+const logger = require('./lib/logger');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
@@ -49,7 +50,7 @@ function createFiles(baseDir, fileSystem) {
         createFiles(fullPath, value);
       }
     } catch (e) {
-      console.warn(`[edulinux] Skipped ${fullPath}: ${e.message}`);
+      logger.warn({ path: fullPath, err: e.message }, 'createFiles: skipped path');
     }
   }
 }
@@ -376,7 +377,7 @@ app.prepare().then(() => {
           },
         });
       } catch (e) {
-        console.error('[edulinux] pty.spawn failed:', shell, e);
+        logger.error({ shell, err: e.message }, 'pty.spawn failed');
         throw e;
       }
 
@@ -405,7 +406,7 @@ app.prepare().then(() => {
           rows: safeSize.rows,
         });
       } catch (e) {
-        console.error('[edulinux] docker exec failed:', container, e.message);
+        logger.error({ container, err: e.message }, 'docker exec failed');
         throw e;
       }
 
@@ -519,27 +520,27 @@ app.prepare().then(() => {
     });
 
     ws.on('error', (err) => {
-      console.error('[edulinux ws]', err.message);
+      logger.error({ err: err.message }, 'WebSocket error');
     });
   });
 
   server.listen(port, hostname, () => {
-    console.log(`\n  \x1b[32m▶ EduLinux\x1b[0m  http://${hostname}:${port}\n`);
+    logger.info({ port, hostname }, 'EduLinux ready');
   });
 
   function shutdown(signal) {
-    console.log(`\n[edulinux] ${signal} — graceful shutdown`);
+    logger.info({ signal }, 'graceful shutdown');
     wss.clients.forEach(c => { try { c.close(1001, 'Server shutdown'); } catch {} });
     server.close(() => {
-      console.log('[edulinux] HTTP server closed');
+      logger.info('HTTP server closed');
       process.exit(0);
     });
-    setTimeout(() => { console.error('[edulinux] Forced exit after 10s'); process.exit(1); }, 10_000).unref();
+    setTimeout(() => { logger.error('Forced exit after 10s timeout'); process.exit(1); }, 10_000).unref();
   }
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT',  () => shutdown('SIGINT'));
 }).catch((err) => {
-  console.error('Server failed to start:', err);
+  logger.error({ err: err.message }, 'Server failed to start');
   process.exit(1);
 });
