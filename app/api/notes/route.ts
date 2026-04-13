@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-const CONTEXT_MAX_LEN = 64;
-const CONTENT_MAX_LEN = 50_000; // 50 KB
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { checkRateLimit } = require('@/lib/rate-limit');
+
+const CONTEXT_MAX = 64;
+const CONTENT_MAX = 50_000;
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const rl = checkRateLimit(`notes:${user.id}`, 30, 60_000);
+  if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+
   const { searchParams } = new URL(req.url);
   const context = searchParams.get('context');
-
-  if (context && context.length > CONTEXT_MAX_LEN) {
+  if (context && context.length > CONTEXT_MAX)
     return NextResponse.json({ error: 'context too long' }, { status: 400 });
-  }
 
-  const query = supabase
-    .from('user_notes')
-    .select('context, content')
-    .eq('user_id', user.id);
+  const query = supabase.from('user_notes').select('context, content').eq('user_id', user.id);
+  const filteredQuery = context ? query.eq('context', context) : query;
 
-  if (context) query.eq('context', context);
-
-  const { data, error } = await query;
+  const { data, error } = await filteredQuery;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   return NextResponse.json({ notes: data ?? [] });
 }
 
@@ -34,32 +33,24 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const rl = checkRateLimit(`notes:${user.id}`, 30, 60_000);
+  if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+
   let context: string, content: string;
   try {
     const body = await req.json() as { context?: unknown; content?: unknown };
     context = String(body.context ?? '');
     content = String(body.content ?? '');
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+  } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
-  if (!context) {
-    return NextResponse.json({ error: 'Missing context' }, { status: 400 });
-  }
-  if (context.length > CONTEXT_MAX_LEN) {
-    return NextResponse.json({ error: 'context too long (max 64)' }, { status: 400 });
-  }
-  if (content.length > CONTENT_MAX_LEN) {
-    return NextResponse.json({ error: 'content too long (max 50000)' }, { status: 400 });
-  }
+  if (!context)                     return NextResponse.json({ error: 'Missing context' }, { status: 400 });
+  if (context.length > CONTEXT_MAX) return NextResponse.json({ error: 'context too long (max 64)' }, { status: 400 });
+  if (content.length > CONTENT_MAX) return NextResponse.json({ error: 'content too long (max 50000)' }, { status: 400 });
 
-  const { error } = await supabase
-    .from('user_notes')
-    .upsert(
-      { user_id: user.id, context, content, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id,context' }
-    );
-
+  const { error } = await supabase.from('user_notes').upsert(
+    { user_id: user.id, context, content, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,context' }
+  );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
