@@ -3,6 +3,7 @@
 import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { scenarios, getScenarioCategoryIcon, getScenarioCategoryLabel, getScenarioCategoryColor } from '@/data/scenarios';
 import { useProgress } from '@/hooks/useProgress';
+import { useScenarioTimer, getMedalForTime, getMedalEmoji, getMedalColor } from '@/hooks/useScenarioTimer';
 import UserMenu from '@/components/UserMenu';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -61,8 +62,12 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
   const { id } = use(params);
   const scenarioId = parseInt(id);
   const scenario = scenarios.find(s => s.id === scenarioId);
-  const { completeScenarioStep, completeScenario, isScenarioUnlocked, progress, loaded } = useProgress();
+  const { completeScenarioStep, completeScenario, recordScenarioTime, isScenarioUnlocked, progress, loaded } = useProgress();
   const router = useRouter();
+
+  const { elapsed, formatted: timerFormatted } = useScenarioTimer(scenarioId);
+  const [completionMedal, setCompletionMedal] = useState<'gold' | 'silver' | 'bronze' | null | undefined>(undefined);
+  const [foundFlags, setFoundFlags] = useState<Set<number>>(new Set());
 
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [stepsDone, setStepsDone] = useState<Set<number>>(new Set());
@@ -173,6 +178,10 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     }, 1500);
   };
 
+  const handleFlagFound = useCallback((index: number, _flagId: string, _question: string) => {
+    setFoundFlags(prev => new Set([...prev, index]));
+  }, []);
+
   // Conditional returns AFTER all hooks
   if (!scenario) {
     return (
@@ -196,15 +205,18 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     );
   }
 
-  if (!isScenarioUnlocked(scenarioId)) {
+  if (!isScenarioUnlocked(scenarioId, scenario?.prerequisites?.completedLevels)) {
     return (
       <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center font-mono">
         <div className="text-center max-w-sm px-6">
-          <p className="text-gray-500 text-4xl mb-4">○</p>
+          <p className="text-gray-500 text-4xl mb-4">🔒</p>
           <p className="text-white font-bold mb-2">Scénario verrouillé</p>
-          <p className="text-gray-500 text-sm mb-6">Complète au moins 10 niveaux pour accéder aux scénarios.</p>
+          <p className="text-gray-500 text-sm mb-2">{scenario?.prerequisites?.description}</p>
+          <p className="text-gray-700 text-xs mb-6">
+            {scenario?.prerequisites?.completedLevels.filter((lvlId: number) => !progress.completedLevels.includes(lvlId)).length ?? 0} niveaux restants
+          </p>
           <Link href="/levels" className="border border-[#a3e635]/40 text-[#a3e635] hover:bg-[#a3e635] hover:text-black px-5 py-2 rounded text-sm font-bold transition-all">
-            → niveaux
+            → continuer les niveaux
           </Link>
         </div>
       </div>
@@ -222,8 +234,14 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     completeScenarioStep(scenarioId, currentStep.id, Math.round(scenario.xpReward / totalSteps));
     setStepAllDone(true);
     if (newDone.size === totalSteps) {
+      // Record time and medal on scenario completion
+      const defaultMedals = { gold: 600, silver: 1200, bronze: 2400 };
+      const medals = scenario.medals ?? defaultMedals;
+      const medal = getMedalForTime(elapsed, medals);
+      setCompletionMedal(medal);
+      recordScenarioTime(scenarioId, elapsed, medals);
       completeScenario(scenarioId, scenario.badge, scenario.xpReward);
-      router.push('/scenarios');
+      // Don't auto-redirect — show completion screen first
     }
   };
 
@@ -239,6 +257,21 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           <span>⏱ {scenario.duration}</span>
         </div>
       </div>
+
+      {/* Lab targets info (docker labs) */}
+      {scenario.labTargets && scenario.labTargets.length > 0 && (
+        <div className="border border-blue-400/20 bg-blue-400/3 rounded p-3">
+          <p className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-2">Cibles Lab</p>
+          {scenario.labTargets.map(t => (
+            <div key={t.name} className="text-xs text-gray-400 mb-1">
+              <span className="text-blue-300 font-mono">{t.ip}</span>
+              <span className="text-gray-600 mx-1">→</span>
+              <span className="text-gray-300 font-mono">{t.name}</span>
+              <p className="text-gray-600 ml-0 mt-0.5">{t.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Briefing */}
       <div className="border border-white/5 rounded overflow-hidden">
@@ -302,21 +335,35 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-1">Objectif</p>
           <p className="text-gray-200 text-xs leading-relaxed">{currentStep.objective}</p>
         </div>
-        <div className="border border-[#a3e635]/40 bg-[#a3e635]/5 rounded-lg p-3">
-          <p className="text-[#a3e635] text-xs font-bold uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-            <span className="text-[10px]">◉</span> À valider
-          </p>
-          <ul className="space-y-2">
-            {currentStep.validation.map((v, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-xs">
-                <span className="w-4 h-4 rounded-full border border-white/25 flex-shrink-0 mt-0.5 flex items-center justify-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                </span>
-                <span className="text-gray-100 leading-relaxed">{v.description}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+
+        {/* Flags to find */}
+        {currentStep.flags && currentStep.flags.length > 0 && (
+          <div className="border border-yellow-400/20 bg-yellow-400/3 rounded-lg p-3">
+            <p className="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+              <span>🚩</span> À découvrir
+            </p>
+            <ul className="space-y-2">
+              {currentStep.flags.map((flag, i) => {
+                const found = foundFlags.has(i);
+                return (
+                  <li key={flag.id} className="flex items-start gap-2.5 text-xs">
+                    <span className={`w-4 h-4 rounded-full border flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+                      found
+                        ? 'bg-[#a3e635]/20 border-[#a3e635] text-[#a3e635]'
+                        : 'border-yellow-400/30 text-yellow-400/30'
+                    }`}>
+                      {found ? '✓' : '?'}
+                    </span>
+                    <span className={`leading-relaxed transition-colors ${found ? 'text-[#a3e635]' : 'text-gray-300'}`}>
+                      {flag.question}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         {currentStep.hints.length > 0 && (
           <div>
             <p className="text-gray-600 text-xs font-bold uppercase tracking-widest mb-1.5">Indices</p>
@@ -369,6 +416,29 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
         <TutorialOverlay steps={TUTORIAL_STEPS} mobileSteps={MOBILE_TUTORIAL_STEPS} onClose={() => setShowTutorial(false)} />
       )}
 
+      {/* Completion overlay */}
+      {stepsDone.size === totalSteps && completionMedal !== undefined && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
+          <div className="bg-[#0f1520] border border-white/10 rounded-xl p-8 text-center max-w-sm mx-4">
+            <div className="text-6xl mb-4">{getMedalEmoji(completionMedal) || '✅'}</div>
+            <h2 className="text-white font-bold text-xl mb-2">Scénario terminé !</h2>
+            <p className="text-gray-400 text-sm mb-1">Temps : <span className="text-white font-mono">{timerFormatted}</span></p>
+            {completionMedal && (
+              <p className={`text-sm font-bold mb-4 ${getMedalColor(completionMedal).split(' ')[0]}`}>
+                {getMedalEmoji(completionMedal)} Médaille {completionMedal === 'gold' ? 'Or' : completionMedal === 'silver' ? 'Argent' : 'Bronze'}
+              </p>
+            )}
+            <p className="text-[#a3e635] font-bold mb-4">+{scenario.xpReward} XP</p>
+            <button
+              onClick={() => router.push('/scenarios')}
+              className="w-full bg-[#a3e635] text-black font-bold py-2.5 rounded hover:bg-[#bef264] transition-colors"
+            >
+              ← Retour aux scénarios
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Nav */}
       <nav className="border-b border-white/5 px-4 sm:px-6 py-3 flex items-center justify-between flex-shrink-0">
         <Link href="/scenarios" className="text-gray-500 hover:text-white text-sm transition-colors flex items-center gap-2 group">
@@ -376,6 +446,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
           <span className="hidden sm:inline">scénarios</span>
         </Link>
         <div className="flex items-center gap-3 text-xs">
+          <span className="text-[#a3e635] font-mono text-xs tabular-nums">⏱ {timerFormatted}</span>
           <UserMenu />
           <button
             onClick={() => setShowTutorial(true)}
@@ -462,13 +533,17 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
             id={scenarioId * 100 + currentStep.id}
             kind="scenario"
             fileSystem={currentStep.fileSystem as Record<string, unknown> ?? {}}
-            validations={currentStep.validation}
+            validations={[]}
+            flags={currentStep.flags}
+            labContainer={scenario.labContainer}
             hints={currentStep.hints}
             onAllComplete={handleStepAllComplete}
+            onFlagFound={handleFlagFound}
             onNextStep={nextStep ? handleNextStep : undefined}
             nextStepData={nextStep ? {
               fileSystem: nextStep.fileSystem as Record<string, unknown> ?? {},
-              validations: nextStep.validation,
+              validations: [],
+              flags: nextStep.flags,
             } : undefined}
           />
         </div>
