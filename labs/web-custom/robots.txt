@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /backup/
+Disallow: /uploads/
+Disallow: /admin/
+Disallow: /flag.txt
