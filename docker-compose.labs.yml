@@ -1,0 +1,214 @@
+# Labs Docker infrastructure for EduLinux pentest scenarios
+# Usage: docker compose -f docker-compose.labs.yml up -d
+# Prerequisite: docker compose -f docker-compose.prod.yml up -d  (main app)
+#
+# Network layout:
+#   lab_pentest  172.20.0.0/24  — attacker + external targets (internet-reachable)
+#   lab_internal 172.21.0.0/24  — internal targets (no direct internet, pivot only)
+
+networks:
+  lab_pentest:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  lab_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+    internal: true  # no internet egress from internal network
+
+services:
+
+  # ── Attacker machine — user shells in via docker exec ─────────────────────
+  lab-attacker:
+    build:
+      context: ./labs/attacker
+    container_name: lab-attacker
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.2
+      lab_internal:
+        ipv4_address: 172.21.0.2
+    volumes:
+      - lab_attacker_data:/workspace
+    stdin_open: true
+    tty: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW          # nmap raw sockets (SYN scan, ping)
+      - NET_BIND_SERVICE # nc listeners sur ports < 1024
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 768M
+
+  # ── SSH brute-force target ─────────────────────────────────────────────────
+  lab-ssh-target:
+    build:
+      context: ./labs/ssh-easy
+    container_name: lab-ssh-target
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.10
+        aliases:
+          - ssh-target.lab
+    expose:
+      - "22"
+
+  # ── DVWA ──────────────────────────────────────────────────────────────────
+  lab-dvwa:
+    image: vulnerables/web-dvwa
+    container_name: lab-dvwa
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.20
+        aliases:
+          - dvwa.lab
+    expose:
+      - "80"
+    environment:
+      - MYSQL_PASS=p@ssw0rd
+
+  # ── Pre-compromised forensic box ──────────────────────────────────────────
+  lab-compromised:
+    build:
+      context: ./labs/compromised
+    container_name: lab-compromised
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.30
+        aliases:
+          - compromised.lab
+    expose:
+      - "22"
+
+  # ── Custom vulnerable web app ─────────────────────────────────────────────
+  lab-web-custom:
+    build:
+      context: ./labs/web-custom
+    container_name: lab-web-custom
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.40
+        aliases:
+          - web-target.lab
+    expose:
+      - "80"
+
+  # ── Privilege escalation box ──────────────────────────────────────────────
+  lab-privesc:
+    build:
+      context: ./labs/privesc
+    container_name: lab-privesc
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.50
+        aliases:
+          - privesc.lab
+    expose:
+      - "22"
+
+  # ── Full red team target (reuses web-custom image) ────────────────────────
+  lab-ghost-target:
+    build:
+      context: ./labs/web-custom
+    container_name: lab-ghost-target
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.60
+        aliases:
+          - ghost-target.lab
+    expose:
+      - "80"
+
+  # ── DMZ server — dual-homed, pivot entry point ────────────────────────────
+  lab-dmz:
+    build:
+      context: ./labs/dmz
+    container_name: lab-dmz
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.70
+        aliases:
+          - dmz.lab
+      lab_internal:
+        ipv4_address: 172.21.0.5
+    expose:
+      - "22"
+      - "80"
+
+  # ── Internal server — only reachable via pivot through DMZ ────────────────
+  lab-internal:
+    build:
+      context: ./labs/internal
+    container_name: lab-internal
+    restart: unless-stopped
+    networks:
+      lab_internal:
+        ipv4_address: 172.21.0.10
+        aliases:
+          - internal.lab
+    expose:
+      - "22"
+
+  # ── ULTIME corp targets ───────────────────────────────────────────────────
+  lab-corp-web:
+    build:
+      context: ./labs/web-custom
+    container_name: lab-corp-web
+    restart: unless-stopped
+    networks:
+      lab_pentest:
+        ipv4_address: 172.20.0.80
+        aliases:
+          - corp-web.lab
+    expose:
+      - "80"
+
+  lab-corp-internal:
+    build:
+      context: ./labs/dmz
+    container_name: lab-corp-internal
+    restart: unless-stopped
+    networks:
+      lab_internal:
+        ipv4_address: 172.21.0.20
+        aliases:
+          - corp-internal.lab
+    expose:
+      - "22"
+
+  lab-corp-db:
+    image: mysql:8.0
+    container_name: lab-corp-db
+    restart: unless-stopped
+    networks:
+      lab_internal:
+        ipv4_address: 172.21.0.30
+        aliases:
+          - corp-db.lab
+    expose:
+      - "3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${LAB_MYSQL_ROOT_PASSWORD:-ChangeMe_Before_Prod!}
+      MYSQL_DATABASE: corporate_data
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: ${LAB_MYSQL_PASSWORD:-dbpass_change_me}
+
+volumes:
+  lab_attacker_data:
+    driver: local
