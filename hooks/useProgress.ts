@@ -9,6 +9,8 @@ export interface UserProgress {
   badges: string[];
   completedScenarios: number[];
   scenarioSteps: Record<number, number[]>;
+  scenarioTimes: Record<number, number>;
+  scenarioMedals: Record<number, 'gold' | 'silver' | 'bronze'>;
 }
 
 const EMPTY: UserProgress = {
@@ -18,6 +20,8 @@ const EMPTY: UserProgress = {
   badges: [],
   completedScenarios: [],
   scenarioSteps: {},
+  scenarioTimes: {},
+  scenarioMedals: {},
 };
 
 async function fetchProgress(): Promise<UserProgress | null> {
@@ -34,6 +38,8 @@ async function fetchProgress(): Promise<UserProgress | null> {
       badges:            p.badges              ?? [],
       completedScenarios: p.completed_scenarios ?? [],
       scenarioSteps:     p.scenario_steps      ?? {},
+      scenarioTimes:     p.scenario_times      ?? {},
+      scenarioMedals:    p.scenario_medals     ?? {},
     };
   } catch {
     return null;
@@ -110,9 +116,35 @@ export function useProgress() {
 
   const resetProgress = () => save({ ...EMPTY });
 
+  const recordScenarioTime = (scenarioId: number, elapsedSeconds: number, medals: { gold: number; silver: number; bronze: number }) => {
+    const p = { ...latestRef.current };
+    // Only record if better than previous time (or first time)
+    const prev = p.scenarioTimes[scenarioId];
+    if (!prev || elapsedSeconds < prev) {
+      p.scenarioTimes = { ...p.scenarioTimes, [scenarioId]: elapsedSeconds };
+    }
+    // Calculate medal
+    let medal: 'gold' | 'silver' | 'bronze' | undefined;
+    if (elapsedSeconds <= medals.gold) medal = 'gold';
+    else if (elapsedSeconds <= medals.silver) medal = 'silver';
+    else if (elapsedSeconds <= medals.bronze) medal = 'bronze';
+
+    if (medal && (!p.scenarioMedals[scenarioId] ||
+      ['bronze', 'silver', 'gold'].indexOf(medal) > ['bronze', 'silver', 'gold'].indexOf(p.scenarioMedals[scenarioId]))) {
+      p.scenarioMedals = { ...p.scenarioMedals, [scenarioId]: medal };
+    }
+    save(p);
+  };
+
   const isLevelUnlocked    = (levelId: number)   => levelId <= progress.currentLevel;
   const isLevelCompleted   = (levelId: number)   => progress.completedLevels.includes(levelId);
-  const isScenarioUnlocked = (_id?: number)       => progress.currentLevel >= 15 || progress.completedLevels.length >= 10;
+  const isScenarioUnlocked = (scenarioId: number, requiredLevels?: number[]): boolean => {
+    if (!requiredLevels || requiredLevels.length === 0) {
+      // Fallback: old behavior
+      return progress.currentLevel >= 15 || progress.completedLevels.length >= 10;
+    }
+    return requiredLevels.every(id => progress.completedLevels.includes(id));
+  };
   const isScenarioCompleted = (id: number)        => progress.completedScenarios.includes(id);
   const getScenarioProgress = (id: number, total: number) => {
     const done = (progress.scenarioSteps[id] ?? []).length;
@@ -126,6 +158,7 @@ export function useProgress() {
     completeScenarioStep,
     completeScenario,
     resetProgress,
+    recordScenarioTime,
     isLevelUnlocked,
     isLevelCompleted,
     isScenarioUnlocked,
