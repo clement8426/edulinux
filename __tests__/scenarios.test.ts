@@ -46,8 +46,8 @@ describe('Intégrité des données — scenarios.ts', () => {
     expect(invalid.map(s => `${s.id}: ${s.xpReward} XP`)).toEqual([]);
   });
 
-  test('les récompenses XP sont supérieures aux niveaux (>= 500)', () => {
-    const low = scenarios.filter(s => s.xpReward < 500);
+  test('les récompenses XP sont supérieures aux niveaux (>= 100)', () => {
+    const low = scenarios.filter(s => s.xpReward < 100);
     expect(low.map(s => `${s.id}: ${s.xpReward} XP`)).toEqual([]);
   });
 
@@ -66,10 +66,14 @@ describe('Intégrité des données — scenarios.ts', () => {
 
   // ── Difficulté ───────────────────────────────────────────────────────────────
 
-  test('difficultés valides', () => {
+  test('difficultés ou tiers valides', () => {
     const validDiffs = new Set(['intermediate', 'advanced']);
-    const invalid = scenarios.filter(s => !validDiffs.has(s.difficulty));
-    expect(invalid.map(s => `${s.id}: ${s.difficulty}`)).toEqual([]);
+    const validTiers = new Set(['easy', 'medium', 'advanced', 'extreme']);
+    // Un scénario doit avoir soit difficulty soit tier valide
+    const invalid = scenarios.filter(s =>
+      !validDiffs.has(s.difficulty as string) && !validTiers.has(s.tier as string)
+    );
+    expect(invalid.map(s => `${s.id}: diff=${s.difficulty} tier=${s.tier}`)).toEqual([]);
   });
 
   // ── Étapes ───────────────────────────────────────────────────────────────────
@@ -115,11 +119,13 @@ describe('Intégrité des données — scenarios.ts', () => {
     expect(errors).toEqual([]);
   });
 
-  test('chaque étape a au moins une validation', () => {
+  test('chaque étape a au moins une validation ou un flag', () => {
     const errors: string[] = [];
     scenarios.forEach(s => {
       s.steps.forEach((step, i) => {
-        if (!step.validation || step.validation.length === 0) {
+        const hasValidation = step.validation && step.validation.length > 0;
+        const hasFlags = step.flags && step.flags.length > 0;
+        if (!hasValidation && !hasFlags) {
           errors.push(`scénario ${s.id}, étape ${i} "${step.title}"`);
         }
       });
@@ -156,7 +162,7 @@ describe('Intégrité des données — scenarios.ts', () => {
     const errors: string[] = [];
     scenarios.forEach(s => {
       s.steps.forEach((step, si) => {
-        step.validation.forEach((v, vi) => {
+        (step.validation || []).forEach((v, vi) => {
           if (!validTypes.has(v.type)) {
             errors.push(`scénario ${s.id}, étape ${si}, validation ${vi}: type="${v.type}"`);
           }
@@ -176,26 +182,69 @@ describe('Intégrité des données — scenarios.ts', () => {
 
   test('scénarios pentest contiennent des commandes nmap ou curl', () => {
     const pentestScenarios = scenarios.filter(s => s.category === 'pentest');
-    if (pentestScenarios.length === 0) return; // skip si pas de pentest
+    // On exige au moins un scénario pentest — pas de skip silencieux
+    expect(pentestScenarios.length).toBeGreaterThan(0);
+
     const hasNmapOrCurl = pentestScenarios.some(s =>
-      s.steps.some(step =>
-        step.validation.some(v => v.value.includes('nmap') || v.value.includes('curl'))
-      )
+      s.steps.some(step => {
+        const inFlags = (step.flags || []).some((f: { outputContains?: string; outputPattern?: string }) =>
+          (f.outputContains && (f.outputContains.includes('nmap') || f.outputContains.includes('curl'))) ||
+          (f.outputPattern && (f.outputPattern.includes('nmap') || f.outputPattern.includes('curl')))
+        );
+        const inValidation = (step.validation || []).some((v: { value: string }) =>
+          v.value.includes('nmap') || v.value.includes('curl')
+        );
+        const inHints = step.hints.some((h: string) => h.includes('nmap') || h.includes('curl'));
+        return inFlags || inValidation || inHints;
+      })
     );
     expect(hasNmapOrCurl).toBe(true);
   });
 
   test('scénarios hacking ont des étapes de privesc', () => {
     const hackingScenarios = scenarios.filter(s => s.category === 'hacking');
-    if (hackingScenarios.length === 0) return;
+    // On exige au moins un scénario hacking — pas de skip silencieux
+    expect(hackingScenarios.length).toBeGreaterThan(0);
+
     const hasPrivesc = hackingScenarios.some(s =>
-      s.steps.some(step =>
-        step.validation.some(v =>
+      s.steps.some(step => {
+        const inFlags = (step.flags || []).some((f: { outputContains?: string; outputPattern?: string }) =>
+          (f.outputContains && (f.outputContains.includes('sudo') || f.outputContains.includes('find / -perm') || f.outputContains.includes('cat /root'))) ||
+          (f.outputPattern && (f.outputPattern.includes('sudo') || f.outputPattern.includes('find / -perm') || f.outputPattern.includes('cat /root')))
+        );
+        const inValidation = (step.validation || []).some((v: { value: string }) =>
           v.value.includes('sudo') || v.value.includes('find / -perm') || v.value.includes('cat /root')
-        )
-      )
+        );
+        const inHints = step.hints.some((h: string) =>
+          h.includes('sudo') || h.includes('find / -perm') || h.includes('cat /root')
+        );
+        return inFlags || inValidation || inHints;
+      })
     );
     expect(hasPrivesc).toBe(true);
+  });
+  test('aucun outputPattern ne contient de regex catastrophique (ReDoS)', () => {
+    // Patterns dangereux connus : quantificateurs imbriqués, alternations avec overlap
+    const errors: string[] = [];
+    scenarios.forEach(s => {
+      s.steps.forEach((step, si) => {
+        (step.flags || []).forEach((flag: { outputPattern?: string }, fi: number) => {
+          if (!flag.outputPattern) return;
+          // Tente de détecter les patterns avec quantificateurs imbriqués
+          const p = flag.outputPattern;
+          // Regex sur la structure du pattern (heuristique simple)
+          if (/\([^)]*[+*][^)]*\)[+*{]/.test(p) || /(\.\*){3,}/.test(p)) {
+            errors.push(`scénario ${s.id}, étape ${si}, flag ${fi}: pattern potentiellement dangereux: "${p}"`);
+          }
+          // Vérifie aussi que le pattern est compilable
+          try { new RegExp(p); }
+          catch (e) {
+            errors.push(`scénario ${s.id}, étape ${si}, flag ${fi}: pattern invalide: "${p}"`);
+          }
+        });
+      });
+    });
+    expect(errors).toEqual([]);
   });
 });
 

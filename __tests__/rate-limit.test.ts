@@ -26,15 +26,25 @@ describe('checkRateLimit', () => {
   });
 
   test('nouvelle fenêtre après windowMs : compteur réinitialisé', () => {
-    checkRateLimit('u4', 2, 80);
-    checkRateLimit('u4', 2, 80);
-    const blocked = checkRateLimit('u4', 2, 80);
-    expect(blocked.allowed).toBe(false);
-    return new Promise<void>(resolve => setTimeout(() => {
+    let fakeNow = Date.now();
+    const realDateNow = Date.now;
+    Date.now = () => fakeNow;
+
+    try {
+      checkRateLimit('u4', 2, 80);
+      checkRateLimit('u4', 2, 80);
+      const blocked = checkRateLimit('u4', 2, 80);
+      expect(blocked.allowed).toBe(false);
+
+      // Avancer le "temps" de 100ms
+      fakeNow += 100;
+
       const r = checkRateLimit('u4', 2, 80);
       expect(r.allowed).toBe(true);
-      resolve();
-    }, 120));
+      expect(r.remaining).toBe(1);
+    } finally {
+      Date.now = realDateNow;
+    }
   });
 
   test('clés différentes : indépendantes', () => {
@@ -45,10 +55,16 @@ describe('checkRateLimit', () => {
     expect(other.allowed).toBe(true);
   });
 
-  test('resetAt est dans ~windowMs ms du premier appel', () => {
-    const before = Date.now();
-    const r = checkRateLimit('u7', 5, 60_000);
-    expect(r.resetAt).toBeGreaterThanOrEqual(before + 59_900);
-    expect(r.resetAt).toBeLessThanOrEqual(before + 60_200);
+  test('resetAt est dans windowMs ms du premier appel', () => {
+    let fakeNow = 1_000_000;
+    const realDateNow = Date.now;
+    Date.now = () => fakeNow;
+
+    try {
+      const r = checkRateLimit('u7', 5, 60_000);
+      expect(r.resetAt).toBe(fakeNow + 60_000);
+    } finally {
+      Date.now = realDateNow;
+    }
   });
 });
