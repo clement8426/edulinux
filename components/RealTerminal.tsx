@@ -76,7 +76,7 @@ export default function RealTerminal({
     Promise.all([
       import('@xterm/xterm'),
       import('@xterm/addon-fit'),
-    ]).then(([{ Terminal }, { FitAddon }]) => {
+    ]).then(async ([{ Terminal }, { FitAddon }]) => {
       if (destroyed || !containerRef.current) return;
 
       // Dispose previous instance
@@ -134,6 +134,36 @@ export default function RealTerminal({
       });
       observer.observe(containerRef.current);
 
+      // ── Fetch token éphémère avant ouverture WS ───────────────────────────
+      let ptyToken: string;
+      try {
+        const tokenRes = await fetch('/api/pty-token');
+        if (!tokenRes.ok) {
+          if (!destroyed) {
+            setWsStatus('error');
+            setErrorMsg('Connexion refusée. Connecte-toi et réessaie.');
+          }
+          return;
+        }
+        const tokenData = await tokenRes.json() as { token?: string };
+        if (!tokenData.token) {
+          if (!destroyed) {
+            setWsStatus('error');
+            setErrorMsg('Token invalide reçu du serveur.');
+          }
+          return;
+        }
+        ptyToken = tokenData.token;
+      } catch {
+        if (!destroyed) {
+          setWsStatus('error');
+          setErrorMsg("Impossible d'obtenir le token d'accès. Vérifie ta connexion.");
+        }
+        return;
+      }
+
+      if (destroyed) return;
+
       // ── WebSocket ──────────────────────────────────────────────────────────
       const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const port = window.location.port ? `:${window.location.port}` : '';
@@ -145,6 +175,7 @@ export default function RealTerminal({
         if (destroyed) { ws.close(); return; }
         ws.send(JSON.stringify({
           type: 'init',
+          token: ptyToken,
           id,
           kind,
           fileSystem: propsRef.current.fileSystem,
