@@ -526,6 +526,19 @@ app.prepare().then(() => {
   server.listen(port, hostname, () => {
     console.log(`\n  \x1b[32m▶ EduLinux\x1b[0m  http://${hostname}:${port}\n`);
   });
+
+  function shutdown(signal) {
+    console.log(`\n[edulinux] ${signal} — graceful shutdown`);
+    wss.clients.forEach(c => { try { c.close(1001, 'Server shutdown'); } catch {} });
+    server.close(() => {
+      console.log('[edulinux] HTTP server closed');
+      process.exit(0);
+    });
+    setTimeout(() => { console.error('[edulinux] Forced exit after 10s'); process.exit(1); }, 10_000).unref();
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT',  () => shutdown('SIGINT'));
 }).catch((err) => {
   console.error('Server failed to start:', err);
   process.exit(1);
