@@ -13,6 +13,7 @@ const {
   verifyPtyToken,
   validateTerminalSize,
   generateWorkDir,
+  isAllowedOrigin,
 } = require('./lib/security');
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -200,6 +201,54 @@ function checkValidations(ws, command) {
   }
 }
 
+// ─── Flag-based output detection ─────────────────────────────────────────────
+
+function checkFlags(ws, outputChunk) {
+  if (!ws._flags || ws._flags.length === 0) return;
+
+  // Accumulate output, strip ANSI escape codes before scanning
+  const stripped = outputChunk.replace(/\x1b\[[0-9;]*[mGKHFABCDJlh]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+  ws._outputBuffer = (ws._outputBuffer || '') + stripped;
+
+  const flags = ws._flags;
+  const completed = ws._completedFlags;
+  const newly = [];
+
+  for (let i = 0; i < flags.length; i++) {
+    if (completed.has(i)) continue;
+    const flag = flags[i];
+    let matched = false;
+
+    if (flag.outputPattern) {
+      try {
+        matched = new RegExp(flag.outputPattern, 'i').test(ws._outputBuffer);
+      } catch { /* invalid regex */ }
+    } else if (flag.outputContains) {
+      matched = ws._outputBuffer.includes(flag.outputContains);
+    }
+
+    if (matched) {
+      completed.add(i);
+      newly.push(i);
+    }
+  }
+
+  for (const idx of newly) {
+    try {
+      ws.send(JSON.stringify({
+        type: 'flag_found',
+        index: idx,
+        id: flags[idx].id,
+        question: flags[idx].question,
+      }));
+    } catch {}
+  }
+
+  if (newly.length > 0 && completed.size === flags.length) {
+    try { ws.send(JSON.stringify({ type: 'all_flags_found' })); } catch {}
+  }
+}
+
 // ─── Server bootstrap ─────────────────────────────────────────────────────────
 
 app.prepare().then(() => {
@@ -213,13 +262,18 @@ app.prepare().then(() => {
 
   server.on('upgrade', (req, socket, head) => {
     const { pathname } = parse(req.url || '/');
-    // Seul /pty appartient au terminal — tout le reste (HMR Next.js) est ignoré
     if (pathname === '/pty') {
+      const origin = req.headers['origin'];
+      if (!isAllowedOrigin(origin, process.env.NEXT_PUBLIC_APP_URL)) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit('connection', ws, req);
       });
     }
-    // On ne détruit pas les autres sockets : Next.js gère lui-même son HMR
+    // Next.js HMR gère ses propres sockets — ne pas interférer
   });
 
   wss.on('connection', (ws) => {
@@ -229,6 +283,9 @@ app.prepare().then(() => {
     ws._completedValidations = new Set();
     ws._workDir = null;
     ws._userId = null;
+    ws._flags = [];
+    ws._completedFlags = new Set();
+    ws._outputBuffer = '';
 
     function spawnShell(workDir, cols, rows) {
       const shell = resolveBashPath();
@@ -323,6 +380,70 @@ app.prepare().then(() => {
           }
         }
 
+        // Check flags against terminal output (flag-based validation for scenarios)
+        if (ws._flags && ws._flags.length > 0) {
+          checkFlags(ws, data);
+        }
+
+        if (out) {
+          try { ws.send(JSON.stringify({ type: 'output', data: out })); } catch {}
+        }
+      });
+
+      ptyProcess.onExit(() => {
+        try { ws.send(JSON.stringify({ type: 'pty_exit' })); } catch {}
+      });
+    }
+
+    function spawnDockerShell(container, cols, rows) {
+      const safeSize = validateTerminalSize(cols, rows);
+      try {
+        ptyProcess = pty.spawn('docker', [
+          'exec', '-it', container,
+          'bash', '--login',
+        ], {
+          name: 'xterm-256color',
+          cols: safeSize.cols,
+          rows: safeSize.rows,
+        });
+      } catch (e) {
+        console.error('[edulinux] docker exec failed:', container, e.message);
+        throw e;
+      }
+
+      let oscBuf = '';
+      ptyProcess.onData((data) => {
+        oscBuf += data;
+        let out = oscBuf;
+        let changed = false;
+
+        // Check flags against output (no OSC commands in docker shell — but still scan output)
+        if (ws._flags && ws._flags.length > 0) {
+          checkFlags(ws, data);
+        }
+
+        // OSC extraction (same as local shell)
+        const OSC_RE = /\x1b\]777;([^\x07]*)\x07/g;
+        let match;
+        while ((match = OSC_RE.exec(oscBuf)) !== null) {
+          const cmd = match[1].trim();
+          if (cmd) checkValidations(ws, cmd);
+          changed = true;
+        }
+        if (changed) {
+          out = oscBuf.replace(/\x1b\]777;[^\x07]*\x07/g, '');
+          oscBuf = oscBuf.replace(/.*\x07/gs, '');
+          if (!oscBuf.includes('\x1b]777;')) oscBuf = '';
+        } else {
+          const partial = oscBuf.lastIndexOf('\x1b]777;');
+          if (partial !== -1) {
+            out = oscBuf.slice(0, partial);
+            oscBuf = oscBuf.slice(partial);
+          } else {
+            out = oscBuf;
+            oscBuf = '';
+          }
+        }
         if (out) {
           try { ws.send(JSON.stringify({ type: 'output', data: out })); } catch {}
         }
@@ -358,31 +479,53 @@ app.prepare().then(() => {
         fs.mkdirSync(workDir, { recursive: true, mode: 0o700 });
         ws._workDir = workDir;
 
-        createFiles(workDir, msg.fileSystem || {});
+        // Parse flags for scenario flag-based validation
+        ws._flags = msg.flags || [];
+        ws._completedFlags = new Set();
+        ws._outputBuffer = '';
 
-        if (msg.hints && msg.hints.length > 0) {
-          const txt = '# Indices\n\n' + msg.hints.map((h, i) => `${i + 1}. ${h}`).join('\n');
-          fs.writeFileSync(path.join(workDir, '.hints'), txt, 'utf8');
-        }
+        // Docker exec mode vs local shell mode
+        if (msg.labContainer) {
+          // Advanced scenario: exec into Docker container
+          try {
+            spawnDockerShell(msg.labContainer, msg.cols, msg.rows);
+            ws.send(JSON.stringify({ type: 'ready' }));
+          } catch (err) {
+            ws.send(JSON.stringify({ type: 'error', message: `Lab container '${msg.labContainer}' not available. Start labs with: docker compose -f docker-compose.labs.yml up -d` }));
+          }
+        } else {
+          // Normal mode: local bash shell
+          createFiles(workDir, msg.fileSystem || {});
 
-        const { cols, rows } = validateTerminalSize(msg.cols, msg.rows);
-        try {
-          spawnShell(workDir, cols, rows);
-          ws.send(JSON.stringify({ type: 'ready' }));
-        } catch (err) {
-          ws.send(JSON.stringify({ type: 'error', message: String(err.message) }));
+          if (msg.hints && msg.hints.length > 0) {
+            const txt = '# Indices\n\n' + msg.hints.map((h, i) => `${i + 1}. ${h}`).join('\n');
+            fs.writeFileSync(path.join(workDir, '.hints'), txt, 'utf8');
+          }
+
+          const { cols, rows } = validateTerminalSize(msg.cols, msg.rows);
+          try {
+            spawnShell(workDir, cols, rows);
+            ws.send(JSON.stringify({ type: 'ready' }));
+          } catch (err) {
+            ws.send(JSON.stringify({ type: 'error', message: String(err.message) }));
+          }
         }
       }
 
       // ── next_step (scenarios) ─────────────────────────────────────────────
       if (msg.type === 'next_step' && ws._workDir) {
-        createFiles(ws._workDir, msg.fileSystem || {});
+        // Reset flags for new step
+        ws._flags = msg.flags || [];
+        ws._completedFlags = new Set();
+        ws._outputBuffer = '';
+
+        if (!msg.labContainer) {
+          createFiles(ws._workDir, msg.fileSystem || {});
+        }
         ws._validations = msg.validations || [];
         ws._completedValidations = new Set();
         // Inject a separator into the terminal
-        if (ptyProcess) {
-          ptyProcess.write('\r');
-        }
+        if (ptyProcess) ptyProcess.write('\r');
         try { ws.send(JSON.stringify({ type: 'step_ready' })); } catch {}
       }
 

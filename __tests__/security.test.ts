@@ -223,3 +223,29 @@ describe('validateProgress', () => {
     expect(result.valid).toBe(false);
   });
 });
+
+describe('isAllowedOrigin', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { isAllowedOrigin } = require('../lib/security');
+
+  test('localhost toujours accepté', () => {
+    expect(isAllowedOrigin('http://localhost:3000', undefined)).toBe(true);
+    expect(isAllowedOrigin('http://localhost:9999', undefined)).toBe(true);
+  });
+
+  test('hostname de APP_URL accepté', () => {
+    expect(isAllowedOrigin('https://edulinux.io', 'https://edulinux.io')).toBe(true);
+  });
+
+  test('hostname différent refusé', () => {
+    expect(isAllowedOrigin('https://evil.com', 'https://edulinux.io')).toBe(false);
+  });
+
+  test('origin vide en prod refusé', () => {
+    expect(isAllowedOrigin('', 'https://edulinux.io')).toBe(false);
+  });
+
+  test('origin undefined sans APP_URL : accepté (dev)', () => {
+    expect(isAllowedOrigin(undefined, undefined)).toBe(true);
+  });
+});
