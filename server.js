@@ -249,6 +249,46 @@ function checkFlags(ws, outputChunk) {
   }
 }
 
+// ─── OSC 777 extraction — partagé entre shell local et docker ────────────────
+const OSC_MAX_BUF = 4096;
+
+/**
+ * Extrait les séquences OSC 777 d'un chunk PTY, valide les commandes,
+ * et retourne les données épurées à envoyer au client.
+ * @param {string} data      - chunk brut
+ * @param {string} oscBuf    - buffer OSC accumulé
+ * @param {object} ws        - WebSocket client
+ * @returns {{ out: string, nextBuf: string }}
+ */
+function processOscData(data, oscBuf, ws) {
+  let buf = oscBuf + data;
+  if (buf.length > OSC_MAX_BUF) buf = buf.slice(-(OSC_MAX_BUF / 2));
+
+  const OSC_RE = /\x1b\]777;([^\x07]*)\x07/g;
+  let out = buf;
+  let changed = false;
+  let match;
+
+  OSC_RE.lastIndex = 0;
+  while ((match = OSC_RE.exec(buf)) !== null) {
+    const cmd = match[1].trim();
+    if (cmd) checkValidations(ws, cmd);
+    changed = true;
+  }
+
+  let nextBuf;
+  if (changed) {
+    out     = buf.replace(/\x1b\]777;[^\x07]*\x07/g, '');
+    nextBuf = buf.replace(/.*\x07/gs, '');
+    if (!nextBuf.includes('\x1b]777;')) nextBuf = '';
+  } else {
+    const partial = buf.lastIndexOf('\x1b]777;');
+    if (partial !== -1) { out = buf.slice(0, partial); nextBuf = buf.slice(partial); }
+    else                { out = buf;                   nextBuf = ''; }
+  }
+  return { out, nextBuf };
+}
+
 // ─── Server bootstrap ─────────────────────────────────────────────────────────
 
 app.prepare().then(() => {
@@ -340,54 +380,12 @@ app.prepare().then(() => {
         throw e;
       }
 
-      // Buffer pour assembler les séquences OSC qui peuvent arriver en plusieurs chunks
       let oscBuf = '';
-
       ptyProcess.onData((data) => {
-        // Cherche et extrait les séquences OSC 777 : ESC]777;COMMANDE\x07
-        // Elles arrivent parfois en plusieurs chunks → on bufférise
-        oscBuf += data;
-
-        let out = oscBuf;
-        let changed = false;
-
-        // Extraire toutes les séquences complètes
-        const OSC_RE = /\x1b\]777;([^\x07]*)\x07/g;
-        let match;
-        while ((match = OSC_RE.exec(oscBuf)) !== null) {
-          const cmd = match[1].trim();
-          if (cmd) {
-            checkValidations(ws, cmd);
-          }
-          changed = true;
-        }
-
-        if (changed) {
-          // Supprimer les séquences avant d'envoyer au client (invisible)
-          out = oscBuf.replace(/\x1b\]777;[^\x07]*\x07/g, '');
-          // Garder les séquences incomplètes dans le buffer
-          oscBuf = oscBuf.replace(/.*\x07/gs, '');
-          if (!oscBuf.includes('\x1b]777;')) oscBuf = '';
-        } else {
-          // Pas de séquence complète — garder seulement ce qui pourrait être le début d'une
-          const partial = oscBuf.lastIndexOf('\x1b]777;');
-          if (partial !== -1) {
-            out = oscBuf.slice(0, partial);
-            oscBuf = oscBuf.slice(partial);
-          } else {
-            out = oscBuf;
-            oscBuf = '';
-          }
-        }
-
-        // Check flags against terminal output (flag-based validation for scenarios)
-        if (ws._flags && ws._flags.length > 0) {
-          checkFlags(ws, data);
-        }
-
-        if (out) {
-          try { ws.send(JSON.stringify({ type: 'output', data: out })); } catch {}
-        }
+        if (ws._flags && ws._flags.length > 0) checkFlags(ws, data);
+        const { out, nextBuf } = processOscData(data, oscBuf, ws);
+        oscBuf = nextBuf;
+        if (out) { try { ws.send(JSON.stringify({ type: 'output', data: out })); } catch {} }
       });
 
       ptyProcess.onExit(() => {
@@ -413,40 +411,10 @@ app.prepare().then(() => {
 
       let oscBuf = '';
       ptyProcess.onData((data) => {
-        oscBuf += data;
-        let out = oscBuf;
-        let changed = false;
-
-        // Check flags against output (no OSC commands in docker shell — but still scan output)
-        if (ws._flags && ws._flags.length > 0) {
-          checkFlags(ws, data);
-        }
-
-        // OSC extraction (same as local shell)
-        const OSC_RE = /\x1b\]777;([^\x07]*)\x07/g;
-        let match;
-        while ((match = OSC_RE.exec(oscBuf)) !== null) {
-          const cmd = match[1].trim();
-          if (cmd) checkValidations(ws, cmd);
-          changed = true;
-        }
-        if (changed) {
-          out = oscBuf.replace(/\x1b\]777;[^\x07]*\x07/g, '');
-          oscBuf = oscBuf.replace(/.*\x07/gs, '');
-          if (!oscBuf.includes('\x1b]777;')) oscBuf = '';
-        } else {
-          const partial = oscBuf.lastIndexOf('\x1b]777;');
-          if (partial !== -1) {
-            out = oscBuf.slice(0, partial);
-            oscBuf = oscBuf.slice(partial);
-          } else {
-            out = oscBuf;
-            oscBuf = '';
-          }
-        }
-        if (out) {
-          try { ws.send(JSON.stringify({ type: 'output', data: out })); } catch {}
-        }
+        if (ws._flags && ws._flags.length > 0) checkFlags(ws, data);
+        const { out, nextBuf } = processOscData(data, oscBuf, ws);
+        oscBuf = nextBuf;
+        if (out) { try { ws.send(JSON.stringify({ type: 'output', data: out })); } catch {} }
       });
 
       ptyProcess.onExit(() => {
