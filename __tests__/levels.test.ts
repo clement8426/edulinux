@@ -185,12 +185,15 @@ describe('Intégrité des données — levels.ts', () => {
     expect(hasForensic).toBe(true);
   });
 
-  test('niveau 80 : CTF final hacking', () => {
+  test('niveau 80 : reconnaissance web (gobuster/curl)', () => {
     const l = levels.find(l => l.id === 80)!;
     expect(l).toBeDefined();
-    expect(l.difficulty).toBe('advanced');
-    const hasCTF = l.validation.some(v => v.value.includes('flag') || v.value.includes('cat'));
-    expect(hasCTF).toBe(true);
+    // level 80 is web recon (formerly level 70), difficulty intermediate
+    expect(['intermediate', 'advanced']).toContain(l.difficulty);
+    const hasWebRecon = l.commands.some(c =>
+      ['curl', 'gobuster', 'dirb', 'ffuf', 'nmap'].includes(c)
+    );
+    expect(hasWebRecon).toBe(true);
   });
 
   // ── Vérification fileSystem ───────────────────────────────────────────────────
