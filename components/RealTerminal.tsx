@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import type { ScenarioFlag } from '@/data/scenarios';
 
 export interface ValidationRule {
   type: 'command' | 'output' | 'fileContent' | 'fileExists';
@@ -20,7 +21,13 @@ export interface RealTerminalProps {
   /** Called when the user clicks "Étape suivante" in a scenario context */
   onNextStep?: () => void;
   /** Data for the next scenario step (triggers next_step on server) */
-  nextStepData?: { fileSystem?: Record<string, unknown>; validations: ValidationRule[] };
+  nextStepData?: { fileSystem?: Record<string, unknown>; validations: ValidationRule[]; flags?: ScenarioFlag[] };
+  /** Flag-based validation (for scenarios) */
+  flags?: ScenarioFlag[];
+  /** Docker exec container name — undefined means local bash mode */
+  labContainer?: string;
+  /** Called when a flag is found; receives its index, id, and question */
+  onFlagFound?: (index: number, id: string, question: string) => void;
 }
 
 export default function RealTerminal({
@@ -32,6 +39,9 @@ export default function RealTerminal({
   onAllComplete,
   onNextStep,
   nextStepData,
+  flags,
+  labContainer,
+  onFlagFound,
 }: RealTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -40,6 +50,7 @@ export default function RealTerminal({
 
   const [completedSet, setCompletedSet] = useState<Set<number>>(new Set());
   const [allDone, setAllDone] = useState(false);
+  const [foundFlagsCount, setFoundFlagsCount] = useState(0);
   const [wsStatus, setWsStatus] = useState<'connecting' | 'ready' | 'error'>('connecting');
   const [errorMsg, setErrorMsg] = useState('');
   const [notifications, setNotifications] = useState<string[]>([]);
@@ -53,8 +64,8 @@ export default function RealTerminal({
   const allDoneRef = useRef(false);
 
   // Keep props in ref so WS callbacks always see latest values
-  const propsRef = useRef({ validations, hints, fileSystem, onAllComplete });
-  propsRef.current = { validations, hints, fileSystem, onAllComplete };
+  const propsRef = useRef({ validations, hints, fileSystem, onAllComplete, onFlagFound });
+  propsRef.current = { validations, hints, fileSystem, onAllComplete, onFlagFound };
 
   useEffect(() => {
     completionHandledRef.current = false;
@@ -179,8 +190,10 @@ export default function RealTerminal({
           id,
           kind,
           fileSystem: propsRef.current.fileSystem,
-          validations: propsRef.current.validations,
-          hints: propsRef.current.hints,
+          validations: propsRef.current.validations || [],
+          flags: flags || [],
+          labContainer: labContainer,
+          hints: propsRef.current.hints || [],
           cols: term.cols,
           rows: term.rows,
         }));
@@ -231,6 +244,15 @@ export default function RealTerminal({
             setContinueDismissed(true);
             propsRef.current.onAllComplete?.();
           }, 2800);
+        }
+
+        if (msg.type === 'flag_found') {
+          setFoundFlagsCount(c => c + 1);
+          propsRef.current.onFlagFound?.(msg.index as number, msg.id as string, msg.question as string);
+        }
+
+        if (msg.type === 'all_flags_found') {
+          propsRef.current.onAllComplete?.();
         }
 
         if (msg.type === 'step_ready') {
@@ -285,13 +307,16 @@ export default function RealTerminal({
     if (!nextStepData || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     setCompletedSet(new Set());
     setAllDone(false);
+    setFoundFlagsCount(0);
     wsRef.current.send(JSON.stringify({
       type: 'next_step',
       fileSystem: nextStepData.fileSystem ?? {},
-      validations: nextStepData.validations,
+      validations: nextStepData.validations || [],
+      flags: nextStepData.flags || [],
+      labContainer: labContainer,
     }));
     onNextStep?.();
-  }, [nextStepData, onNextStep]);
+  }, [nextStepData, onNextStep, labContainer]);
 
   /** Passe à la suite tout de suite (annule le délai auto) */
   const handleContinueNow = useCallback(() => {
@@ -320,6 +345,12 @@ export default function RealTerminal({
           student@edulinux — bash
         </span>
         <div className="flex items-center gap-2">
+          {/* Flag counter — only shown when flags are provided */}
+          {flags && flags.length > 0 && (
+            <span className="text-xs text-yellow-400 font-mono">
+              🚩 {foundFlagsCount}/{flags.length} flags
+            </span>
+          )}
           {/* Validation counter */}
           <span className={`text-xs font-mono px-2 py-0.5 rounded ${
             allDone
@@ -374,6 +405,7 @@ export default function RealTerminal({
             {!continueDismissed && (
               <button
                 type="button"
+                aria-label="Passer à l'étape suivante maintenant"
                 onClick={handleContinueNow}
                 className="bg-[#a3e635] text-black text-xs font-bold px-4 py-1.5 rounded hover:bg-[#bef264] transition-colors"
               >
@@ -383,6 +415,7 @@ export default function RealTerminal({
             {onNextStep && nextStepData ? (
               <button
                 type="button"
+                aria-label="Charger l'étape suivante du scénario"
                 onClick={handleNextStep}
                 className="border border-[#a3e635]/50 text-[#a3e635] text-xs font-bold px-4 py-1.5 rounded hover:bg-[#a3e635]/10 transition-colors"
               >
