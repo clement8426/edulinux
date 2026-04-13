@@ -8,16 +8,21 @@ import Footer from '@/components/Footer';
 import UserMenu from '@/components/UserMenu';
 
 const CHAPTERS = [
-  { range: [1,  10], label: 'Terminal & SSH',       tag: '01–10' },
-  { range: [11, 20], label: 'Flux & Scripts',       tag: '11–20' },
-  { range: [21, 30], label: 'Sécurité',             tag: '21–30' },
-  { range: [31, 40], label: 'Système Linux',        tag: '31–40' },
-  { range: [41, 50], label: 'Réseau',               tag: '41–50' },
-  { range: [51, 60], label: 'Forensic Linux',       tag: '51–60' },
-  { range: [61, 70], label: 'Reconnaissance',       tag: '61–70' },
-  { range: [71, 80], label: 'Hacking & PrivEsc',   tag: '71–80' },
-  { range: [81, 90], label: 'Bash Avancé',          tag: '81–90' },
-  { range: [91,100], label: 'CTF Challenges',       tag: '91–100' },
+  { range: [1,  10],  label: 'Terminal & SSH',        tag: '01–10'   },
+  { range: [11, 20],  label: 'Flux & Scripts',        tag: '11–20'   },
+  { range: [21, 30],  label: 'Sécurité',              tag: '21–30'   },
+  { range: [31, 40],  label: 'Système Linux',         tag: '31–40'   },
+  { range: [41, 50],  label: 'Réseau',                tag: '41–50'   },
+  { range: [51, 60],  label: 'Forensic Linux',        tag: '51–60'   },
+  { range: [61, 70],  label: 'Reconnaissance',        tag: '61–70'   },
+  { range: [71, 80],  label: 'Hacking & PrivEsc',     tag: '71–80'   },
+  { range: [81, 90],  label: 'Bash Avancé',           tag: '81–90'   },
+  { range: [91, 100], label: 'CTF Challenges',        tag: '91–100'  },
+  { range: [101,110], label: 'Web Reconnaissance',    tag: '101–110' },
+  { range: [111,120], label: 'Web Exploitation',      tag: '111–120' },
+  { range: [121,130], label: 'Auth & Password Attacks', tag: '121–130' },
+  { range: [131,140], label: 'Metasploit',            tag: '131–140' },
+  { range: [141,150], label: 'Pivoting',              tag: '141–150' },
 ];
 
 const DIFF_COLOR: Record<string, string> = {
