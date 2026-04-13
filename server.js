@@ -8,6 +8,12 @@ const pty = require('node-pty');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const {
+  validateFileSystemPath,
+  verifyPtyToken,
+  validateTerminalSize,
+  generateWorkDir,
+} = require('./lib/security');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
@@ -21,8 +27,10 @@ const handle = app.getRequestHandler();
 function createFiles(baseDir, fileSystem) {
   if (!fileSystem || typeof fileSystem !== 'object') return;
   for (const [key, value] of Object.entries(fileSystem)) {
+    const fullPath = validateFileSystemPath(baseDir, key);
+    if (!fullPath) continue; // path traversal bloqué
+
     const cleanKey = key.startsWith('/') ? key.slice(1) : key;
-    const fullPath = path.join(baseDir, cleanKey);
     const dir = path.dirname(fullPath);
     try {
       fs.mkdirSync(dir, { recursive: true });
@@ -220,6 +228,7 @@ app.prepare().then(() => {
     ws._validations = [];
     ws._completedValidations = new Set();
     ws._workDir = null;
+    ws._userId = null;
 
     function spawnShell(workDir, cols, rows) {
       const shell = resolveBashPath();
@@ -254,10 +263,11 @@ app.prepare().then(() => {
         : ['--noprofile', '--rcfile', bashrcFile, '-i'];
 
       try {
+        const safeSize = validateTerminalSize(cols, rows);
         ptyProcess = pty.spawn(shell, args, {
           name: 'xterm-256color',
-          cols: cols || 80,
-          rows: rows || 24,
+          cols: safeSize.cols,
+          rows: safeSize.rows,
           cwd: workDir,
           env: {
             ...process.env,
@@ -327,15 +337,25 @@ app.prepare().then(() => {
       let msg;
       try { msg = JSON.parse(raw.toString()); } catch { return; }
 
+      // Rejette tout message non-init avant authentification
+      if (!ws._userId && msg.type !== 'init') return;
+
       // ── init ──────────────────────────────────────────────────────────────
       if (msg.type === 'init') {
+        // ── Auth : vérifier le token éphémère ──────────────────────────────
+        const authResult = verifyPtyToken(msg.token);
+        if (!authResult) {
+          try { ws.close(4401, 'Unauthorized'); } catch {}
+          return;
+        }
+        ws._userId = authResult.userId;
+
         if (ptyProcess) { try { ptyProcess.kill(); } catch {} }
         ws._validations = msg.validations || [];
         ws._completedValidations = new Set();
 
-        const workId = `${msg.kind || 'level'}-${msg.id}-${Date.now()}`;
-        const workDir = path.join(os.tmpdir(), 'edulinux', workId);
-        fs.mkdirSync(workDir, { recursive: true });
+        const workDir = generateWorkDir(ws._userId, msg.kind || 'level', msg.id);
+        fs.mkdirSync(workDir, { recursive: true, mode: 0o700 });
         ws._workDir = workDir;
 
         createFiles(workDir, msg.fileSystem || {});
@@ -345,8 +365,9 @@ app.prepare().then(() => {
           fs.writeFileSync(path.join(workDir, '.hints'), txt, 'utf8');
         }
 
+        const { cols, rows } = validateTerminalSize(msg.cols, msg.rows);
         try {
-          spawnShell(workDir, msg.cols, msg.rows);
+          spawnShell(workDir, cols, rows);
           ws.send(JSON.stringify({ type: 'ready' }));
         } catch (err) {
           ws.send(JSON.stringify({ type: 'error', message: String(err.message) }));
@@ -381,6 +402,9 @@ app.prepare().then(() => {
 
     ws.on('close', () => {
       if (ptyProcess) { try { ptyProcess.kill(); } catch {} }
+      if (ws._workDir) {
+        try { fs.rmSync(ws._workDir, { recursive: true, force: true }); } catch {}
+      }
     });
 
     ws.on('error', (err) => {
