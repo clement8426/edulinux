@@ -16,6 +16,7 @@ const {
   isAllowedOrigin,
 } = require('./lib/security');
 const logger = require('./lib/logger');
+const { capBuffer } = require('./lib/buffer-utils');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
@@ -209,7 +210,7 @@ function checkFlags(ws, outputChunk) {
 
   // Accumulate output, strip ANSI escape codes before scanning
   const stripped = outputChunk.replace(/\x1b\[[0-9;]*[mGKHFABCDJlh]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
-  ws._outputBuffer = (ws._outputBuffer || '') + stripped;
+  ws._outputBuffer = capBuffer((ws._outputBuffer || '') + stripped);
 
   const flags = ws._flags;
   const completed = ws._completedFlags;
