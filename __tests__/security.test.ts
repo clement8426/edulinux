@@ -228,24 +228,50 @@ describe('isAllowedOrigin', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { isAllowedOrigin } = require('../lib/security');
 
-  test('localhost toujours accepté', () => {
-    expect(isAllowedOrigin('http://localhost:3000', undefined)).toBe(true);
-    expect(isAllowedOrigin('http://localhost:9999', undefined)).toBe(true);
+  // ── Mode dev (isProd = false, défaut) ─────────────────────────────────────
+
+  test('dev — localhost toujours accepté', () => {
+    expect(isAllowedOrigin('http://localhost:3000', undefined, false)).toBe(true);
+    expect(isAllowedOrigin('http://localhost:9999', undefined, false)).toBe(true);
   });
 
-  test('hostname de APP_URL accepté', () => {
-    expect(isAllowedOrigin('https://edulinux.io', 'https://edulinux.io')).toBe(true);
+  test('dev — hostname de APP_URL accepté', () => {
+    expect(isAllowedOrigin('https://edulinux.io', 'https://edulinux.io', false)).toBe(true);
   });
 
-  test('hostname différent refusé', () => {
-    expect(isAllowedOrigin('https://evil.com', 'https://edulinux.io')).toBe(false);
+  test('dev — hostname différent refusé', () => {
+    expect(isAllowedOrigin('https://evil.com', 'https://edulinux.io', false)).toBe(false);
   });
 
-  test('origin vide en prod refusé', () => {
-    expect(isAllowedOrigin('', 'https://edulinux.io')).toBe(false);
+  test('dev — origin vide sans APP_URL : accepté', () => {
+    expect(isAllowedOrigin('', undefined, false)).toBe(false); // string vide → URL() throw → false
+    expect(isAllowedOrigin(undefined, undefined, false)).toBe(true);
   });
 
-  test('origin undefined sans APP_URL : accepté (dev)', () => {
-    expect(isAllowedOrigin(undefined, undefined)).toBe(true);
+  test('dev — origin undefined avec APP_URL : refusé', () => {
+    expect(isAllowedOrigin(undefined, 'https://edulinux.io', false)).toBe(false);
+  });
+
+  // ── Mode prod (isProd = true) ─────────────────────────────────────────────
+
+  test('prod — origin undefined SANS APP_URL : refusé (fail-secure)', () => {
+    // Le bug précédent : retournait true ici. Maintenant doit retourner false.
+    expect(isAllowedOrigin(undefined, undefined, true)).toBe(false);
+  });
+
+  test('prod — origin undefined AVEC APP_URL : refusé', () => {
+    expect(isAllowedOrigin(undefined, 'https://edulinux.io', true)).toBe(false);
+  });
+
+  test('prod — origin valide avec APP_URL matching : accepté', () => {
+    expect(isAllowedOrigin('https://edulinux.io', 'https://edulinux.io', true)).toBe(true);
+  });
+
+  test('prod — origin valide sans APP_URL : refusé (fail-secure)', () => {
+    expect(isAllowedOrigin('https://evil.com', undefined, true)).toBe(false);
+  });
+
+  test('prod — localhost toujours accepté (dev connecté en prod)', () => {
+    expect(isAllowedOrigin('http://localhost:3000', undefined, true)).toBe(true);
   });
 });

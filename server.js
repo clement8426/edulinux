@@ -306,7 +306,7 @@ app.prepare().then(() => {
     const { pathname } = parse(req.url || '/');
     if (pathname === '/pty') {
       const origin = req.headers['origin'];
-      if (!isAllowedOrigin(origin, process.env.NEXT_PUBLIC_APP_URL)) {
+      if (!isAllowedOrigin(origin, process.env.NEXT_PUBLIC_APP_URL, process.env.NODE_ENV === 'production')) {
         socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
         socket.destroy();
         return;
