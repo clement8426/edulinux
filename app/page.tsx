@@ -21,7 +21,12 @@ const CHAPTER_META: Record<number, { title: string; items: string[] }> = {
   61: { title: 'Reconnaissance',       items: ['nmap, dig', 'DNS, OSINT', 'Enumération web', 'Fingerprinting'] },
   71: { title: 'Hacking & PrivEsc',    items: ['SUID, capabilities', 'Cron abuse', 'Pivoting', 'Persistence'] },
   81: { title: 'Bash Avancé',          items: ['Boucles, fonctions', 'Arrays, regex', 'awk, sed avancés', 'trap, getopts'] },
-  91: { title: 'CTF Challenges',       items: ['Stéganographie', 'Encodages, hash', 'Analyse binaire', 'Docker escape'] },
+  91:  { title: 'CTF Challenges',         items: ['Stéganographie', 'Encodages, hash', 'Analyse binaire', 'Docker escape'] },
+  101: { title: 'Web Reconnaissance',    items: ['Gobuster, ffuf', 'Headers HTTP', 'Nikto, Wapiti', 'Fingerprinting web'] },
+  111: { title: 'Web Exploitation',      items: ['SQLi, XSS', 'LFI/RFI', 'CSRF, SSRF', 'Injections'] },
+  121: { title: 'Auth & Password Attacks', items: ['Hydra, Medusa', 'Hash cracking', 'Wordlists', 'Brute force'] },
+  131: { title: 'Metasploit',            items: ['msfconsole', 'Exploits, payloads', 'Meterpreter', 'Post-exploitation'] },
+  141: { title: 'Pivoting',              items: ['Tunnels SSH', 'Proxychains', 'Port forwarding', 'Lateral movement'] },
 };
 
 const TRACKS = Object.entries(CHAPTER_META).map(([startStr, meta]) => {
