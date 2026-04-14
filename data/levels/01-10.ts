@@ -350,16 +350,18 @@ export const levels01_10: Level[] = [
       "L'utilisateur, le serveur et le port sont dans instructions.txt"
     ],
     fileSystem: {
-      'instructions.txt': `🔐 Informations de connexion SSH
+      'instructions.txt': `Informations de connexion SSH
 
 Pour te connecter au serveur de backup :
-- Utilisateur : admin
-- Serveur : backup.edulinux.local
-- Port : 2222
+  Utilisateur : admin
+  Serveur     : backup.edulinux.local
+  Port        : 2222
 
-⚠️ Attention : utilise le bon port, pas le port par défaut (22) !`,
-      'bin/ssh': `#!/bin/bash
-# EduLinux SSH simulator — connexion réaliste simulée
+Attention : le port par defaut SSH est 22, mais ce serveur ecoute sur 2222.
+Utilise l'option -p pour specifier le port :
+  ssh admin@backup.edulinux.local -p 2222`,
+      'bin/ssh': { content: `#!/bin/bash
+# EduLinux SSH simulator
 HOST="" PORT=22 USER="student" NEXT_PORT=0
 for arg in "$@"; do
   if [ "$NEXT_PORT" = "1" ]; then PORT="$arg"; NEXT_PORT=0
@@ -367,29 +369,23 @@ for arg in "$@"; do
   elif echo "$arg" | grep -q "@"; then USER="\${arg%%@*}"; HOST="\${arg##*@}"
   fi
 done
-# Niveau 10 : le bon port est 2222 — sans -p ou mauvais port → échec explicite (pas de faux succès)
 if [ "\${HOST}" = "backup.edulinux.local" ] && [ "\${PORT}" != "2222" ]; then
-  printf "\\033[31m✘ Connexion refusée : mauvais port pour ce serveur de backup.\\033[0m\\n"
-  printf "\\033[33m   Relis instructions.txt : il faut \\033[1m-p 2222\\033[0m\\033[33m (pas le port 22 par défaut).\\033[0m\\n"
-  printf "\\033[90m   Exemple : ssh admin@backup.edulinux.local -p 2222\\033[0m\\n"
-  exit 1
+  printf "\\033[31mssh: connect to host %s port %s: Connection refused\\033[0m\\n" "\${HOST}" "\${PORT}"
+  printf "\\033[33m=> Ce serveur n'ecoute pas sur le port %s.\\033[0m\\n" "\${PORT}"
+  printf "\\033[33m   Consulte instructions.txt et ajoute l'option -p avec le bon port.\\033[0m\\n"
+  exit 255
 fi
-printf "ssh: connecting to %s (port %s) as %s...\\n" "\${HOST:-server}" "\${PORT}" "\${USER}"
-sleep 0.8
+printf "ssh: connecting to %s port %s...\\n" "\${HOST}" "\${PORT}"
+sleep 0.6
 printf "The authenticity of host '[%s]:%s' can't be established.\\n" "\${HOST}" "\${PORT}"
 printf "ED25519 key fingerprint is SHA256:xK2m9nPqR7vL4tY1uW8eJ3bC6dF0gH5i.\\n"
-printf "Warning: Permanently added '[%s]:%s' (ED25519) to the list of known hosts.\\n" "\${HOST}" "\${PORT}"
-sleep 0.4
-printf "\\033[32m✔ Connexion SSH établie avec succès !\\033[0m\\n"
-printf "\\n"
-printf "  ╔══════════════════════════════════════╗\\n"
-printf "  ║   EduLinux Backup Server v2.4.1      ║\\n"
-printf "  ║   Hostname : backup-server            ║\\n"
-printf "  ║   Adresse  : 10.10.10.50:%s          ║\\n" "\${PORT}"
-printf "  ║   Dernier login : Lun 15 Jan 03:25   ║\\n"
-printf "  ╚══════════════════════════════════════╝\\n"
-printf "\\n"
-printf "%s@backup-server:~\\\$ [session fermée — simulateur SSH]\\n" "\${USER}"`,
+printf "Warning: Permanently added '[%s]:%s' to the list of known hosts.\\n" "\${HOST}" "\${PORT}"
+sleep 0.3
+printf "\\033[32mConnected to %s:%s as %s\\033[0m\\n\\n" "\${HOST}" "\${PORT}" "\${USER}"
+printf "  EduLinux Backup Server v2.4.1\\n"
+printf "  Dernier login : Lun 15 Jan 03:25 depuis 10.0.0.1\\n\\n"
+printf "%s@backup-server:~\\\$ [session fermee - simulateur]\\n" "\${USER}"`,
+        mode: 0o755 },
     },
     validation: [
       { type: 'command', value: 'ssh admin@backup.edulinux.local -p 2222', description: 'Se connecter en SSH avec les bonnes informations' }

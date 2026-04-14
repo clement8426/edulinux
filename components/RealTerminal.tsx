@@ -323,12 +323,18 @@ export default function RealTerminal({
           student@edulinux — bash
         </span>
         <div className="flex items-center gap-2">
-          {/* Clear button */}
+          {/* Clear button — cancels pending input then clears display */}
           <button
             data-tutorial="terminal-clear"
             type="button"
-            title="Effacer le terminal (garde l'historique)"
-            onClick={() => termRef.current?.clear()}
+            title="Annuler la saisie en cours (Ctrl+C) puis effacer l'écran"
+            onClick={() => {
+              // Ctrl+C annule un quote ouvert, une commande en cours, etc.
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'input', data: '\x03' }));
+              }
+              termRef.current?.clear();
+            }}
             className="text-gray-600 hover:text-gray-300 border border-white/8 hover:border-white/20 px-2 py-0.5 rounded text-xs transition-colors font-mono"
           >
             clear
