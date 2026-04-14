@@ -1,10 +1,22 @@
 # Usage sur le VPS (dans /opt/edulinux) :
 #   cp .env.production.example .env.production   # puis éditer avec tes vraies valeurs
+#   sudo mkdir -p /opt/edulinux/workdirs && sudo chown 1001:1001 /opt/edulinux/workdirs
+#   DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+#   echo "DOCKER_GID=${DOCKER_GID}" >> .env.production
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
 # Ne commite JAMAIS .env.production.
 
 services:
+  # Builds the sandbox image and exits immediately — ensures the image exists before edulinux starts
+  edulinux-sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    image: edulinux-sandbox:latest
+    command: ["true"]
+    restart: "no"
+
   edulinux:
     build:
       context: .
@@ -14,20 +26,27 @@ services:
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     image: edulinux:latest
     restart: unless-stopped
+    depends_on:
+      - edulinux-sandbox
     env_file:
       - .env.production
     environment:
       NODE_ENV: production
       PORT: "3000"
+      WORKDIR_HOST_PATH: /opt/edulinux/workdirs  # tells server.js the HOST path for docker -v
     ports:
       - "127.0.0.1:3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for spawning sandbox containers
+      - /opt/edulinux/workdirs:/tmp/edulinux        # bind mount so workdirs are on HOST fs
+    group_add:
+      - "${DOCKER_GID:-998}"  # host docker group GID for socket access
     # ── Hardening sécurité ──────────────────────────────────────────────────
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    tmpfs:
-      - /tmp:size=512m,mode=1777
+    # Note: /tmp tmpfs removed — /tmp/edulinux is now a bind mount (workdirs must be on HOST fs)
     # ────────────────────────────────────────────────────────────────────────
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/"]

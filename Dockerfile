@@ -36,6 +36,9 @@ ENV PORT=3000
 RUN apt-get update && apt-get install -y --no-install-recommends bash ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
+# Docker CLI — pour spawner les containers sandbox PTY
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
+
 RUN groupadd --gid 1001 nodejs && useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs
 
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules

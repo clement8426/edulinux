@@ -1,0 +1,45 @@
+# EduLinux — Sandbox image for isolated PTY sessions
+# Minimal Debian 12 with common Unix tools. No sudo, no setuid beyond Debian defaults.
+# student UID 1001 matches nodejs UID in the app container so workdirs (mode 0o700, owned by 1001) are accessible.
+
+FROM debian:12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      bash \
+      coreutils \
+      grep \
+      sed \
+      gawk \
+      findutils \
+      procps \
+      file \
+      binutils \
+      openssl \
+      curl \
+      wget \
+      openssh-client \
+      netcat-openbsd \
+      net-tools \
+      iproute2 \
+      iputils-ping \
+      dnsutils \
+      python3 \
+      nano \
+      vim-tiny \
+      git \
+      tar \
+      bzip2 \
+      unzip \
+      jq \
+      xxd \
+      util-linux \
+  && rm -rf /var/lib/apt/lists/*
+
+# Create student user with UID/GID 1001 (matches nodejs in app container)
+RUN groupadd --gid 1001 student \
+  && useradd --uid 1001 --gid student --shell /bin/bash --create-home student
+
+USER student
+WORKDIR /home/student
+
+CMD ["bash"]

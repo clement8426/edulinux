@@ -8,6 +8,8 @@ const pty = require('node-pty');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
+const { execFile } = require('child_process');
 const {
   validateFileSystemPath,
   verifyPtyToken,
@@ -17,6 +19,12 @@ const {
 } = require('./lib/security');
 const logger = require('./lib/logger');
 const { capBuffer } = require('./lib/buffer-utils');
+
+// ─── Sandbox mode ─────────────────────────────────────────────────────────────
+// When WORKDIR_HOST_PATH is set (production), PTY sessions run in isolated
+// sibling Docker containers instead of directly in this container.
+const WORKDIR_HOST_PATH = process.env.WORKDIR_HOST_PATH || null;
+const USE_SANDBOX = Boolean(WORKDIR_HOST_PATH);
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
@@ -335,58 +343,129 @@ app.prepare().then(() => {
     ws._flags = [];
     ws._completedFlags = new Set();
     ws._outputBuffer = '';
+    ws._containerName = null;
 
     function spawnShell(workDir, cols, rows) {
-      const shell = resolveBashPath();
-      const histFile = path.join(workDir, '.bash_history');
-      const bashrcFile = path.join(workDir, '.bashrc');
-      // Chemin brut dans un fichier — évite sed "s|${workDir}|…" si le chemin contient | ou " (bashrc cassé)
-      fs.writeFileSync(path.join(workDir, '.edulinux_home'), workDir, 'utf8');
+      const containerName = `pty-${crypto.randomBytes(8).toString('hex')}`;
+      ws._containerName = containerName;
 
-      // Bashrc minimal — PROMPT_COMMAND envoie la dernière commande dans le flux PTY
-      // via une séquence OSC invisible (ESC]777;CMD\x07).
-      // Le serveur l'intercepte dans onData, valide, et la supprime avant envoi au client.
-      // Fonctionne avec l'autocomplétion Tab, les flèches, tout.
-      fs.writeFileSync(bashrcFile, [
-        `PS1='\\[\\033[01;32m\\]student@edulinux\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '`,
-        `HISTFILE="${histFile}"`,
-        'HISTSIZE=1000',
-        'HISTFILESIZE=1000',
-        'HISTCONTROL=ignoredups',
-        `PROMPT_COMMAND='__ec=$(history 1 | sed "s/^ *[0-9]* *//"); printf "\\033]777;%s\\007" "$__ec"; history -a'`,
-        'pwd() {',
-        '  local p w',
-        '  p=$(command pwd)',
-        '  w=""',
-        '  [ -f "$HOME/.edulinux_home" ] && IFS= read -r w < "$HOME/.edulinux_home"',
-        '  if [ -n "$w" ] && [ "${p#$w}" != "$p" ]; then echo "~${p#$w}"; else echo "$p"; fi',
-        '}',
-        `export PATH="$HOME/bin:$PATH"`,
-      ].join('\n') + '\n', 'utf8');
+      if (USE_SANDBOX) {
+        // ── Sandbox mode (production) — run bash in an isolated sibling container ──
+        // HOME inside the container is always /home/student (the bind-mount target)
+        const containerHome = '/home/student';
+        const histFile = `${containerHome}/.bash_history`;
+        const bashrcFile = path.join(workDir, '.bashrc');
 
-      const args = process.platform === 'win32'
-        ? []
-        : ['--noprofile', '--rcfile', bashrcFile, '-i'];
+        // .edulinux_home stores the container-side home path for the custom pwd() function
+        fs.writeFileSync(path.join(workDir, '.edulinux_home'), containerHome, 'utf8');
 
-      try {
+        // Bashrc minimal — PROMPT_COMMAND envoie la dernière commande dans le flux PTY
+        // via une séquence OSC invisible (ESC]777;CMD\x07).
+        // Le serveur l'intercepte dans onData, valide, et la supprime avant envoi au client.
+        // Fonctionne avec l'autocomplétion Tab, les flèches, tout.
+        fs.writeFileSync(bashrcFile, [
+          `PS1='\\[\\033[01;32m\\]student@edulinux\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '`,
+          `HOME="${containerHome}"`,
+          `HISTFILE="${histFile}"`,
+          'HISTSIZE=1000',
+          'HISTFILESIZE=1000',
+          'HISTCONTROL=ignoredups',
+          `PROMPT_COMMAND='__ec=$(history 1 | sed "s/^ *[0-9]* *//"); printf "\\033]777;%s\\007" "$__ec"; history -a'`,
+          'pwd() {',
+          '  local p w',
+          '  p=$(command pwd)',
+          '  w=""',
+          '  [ -f "$HOME/.edulinux_home" ] && IFS= read -r w < "$HOME/.edulinux_home"',
+          '  if [ -n "$w" ] && [ "${p#$w}" != "$p" ]; then echo "~${p#$w}"; else echo "$p"; fi',
+          '}',
+          `export PATH="$HOME/bin:$PATH"`,
+        ].join('\n') + '\n', 'utf8');
+
+        // Compute the HOST-side path for the docker -v bind mount.
+        // workDir is under /tmp/edulinux/… inside the app container, which is bind-mounted
+        // from /opt/edulinux/workdirs/… on the host. Replace the prefix accordingly.
+        const appTmpBase = path.join(os.tmpdir(), 'edulinux');
+        const hostWorkDir = workDir.replace(appTmpBase, WORKDIR_HOST_PATH);
+
         const safeSize = validateTerminalSize(cols, rows);
-        ptyProcess = pty.spawn(shell, args, {
-          name: 'xterm-256color',
-          cols: safeSize.cols,
-          rows: safeSize.rows,
-          cwd: workDir,
-          env: {
-            ...process.env,
-            HOME: workDir,
-            TERM: 'xterm-256color',
-            COLORTERM: 'truecolor',
-            PATH: (process.env.PATH || '') + ':/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin',
-            LANG: process.env.LANG || 'en_US.UTF-8',
-          },
-        });
-      } catch (e) {
-        logger.error({ shell, err: e.message }, 'pty.spawn failed');
-        throw e;
+        try {
+          ptyProcess = pty.spawn('docker', [
+            'run', '--rm',
+            '--name', containerName,
+            '-it',
+            '--network=none',
+            '--memory=96m',
+            '--memory-swap=96m',
+            '--pids-limit=40',
+            '--cap-drop=ALL',
+            '--security-opt=no-new-privileges',
+            '-e', 'HOME=/home/student',
+            '-e', 'TERM=xterm-256color',
+            '-e', 'COLORTERM=truecolor',
+            '-e', `LANG=${process.env.LANG || 'en_US.UTF-8'}`,
+            '-v', `${hostWorkDir}:/home/student`,
+            '-w', '/home/student',
+            '--user', 'student',
+            'edulinux-sandbox:latest',
+            'bash', '--noprofile', '--rcfile', '/home/student/.bashrc', '-i',
+          ], {
+            name: 'xterm-256color',
+            cols: safeSize.cols,
+            rows: safeSize.rows,
+          });
+        } catch (e) {
+          logger.error({ containerName, err: e.message }, 'docker run sandbox failed');
+          throw e;
+        }
+      } else {
+        // ── Dev mode fallback — local bash shell (no WORKDIR_HOST_PATH set) ──
+        const shell = resolveBashPath();
+        const histFile = path.join(workDir, '.bash_history');
+        const bashrcFile = path.join(workDir, '.bashrc');
+        // Chemin brut dans un fichier — évite sed "s|${workDir}|…" si le chemin contient | ou " (bashrc cassé)
+        fs.writeFileSync(path.join(workDir, '.edulinux_home'), workDir, 'utf8');
+
+        fs.writeFileSync(bashrcFile, [
+          `PS1='\\[\\033[01;32m\\]student@edulinux\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '`,
+          `HISTFILE="${histFile}"`,
+          'HISTSIZE=1000',
+          'HISTFILESIZE=1000',
+          'HISTCONTROL=ignoredups',
+          `PROMPT_COMMAND='__ec=$(history 1 | sed "s/^ *[0-9]* *//"); printf "\\033]777;%s\\007" "$__ec"; history -a'`,
+          'pwd() {',
+          '  local p w',
+          '  p=$(command pwd)',
+          '  w=""',
+          '  [ -f "$HOME/.edulinux_home" ] && IFS= read -r w < "$HOME/.edulinux_home"',
+          '  if [ -n "$w" ] && [ "${p#$w}" != "$p" ]; then echo "~${p#$w}"; else echo "$p"; fi',
+          '}',
+          `export PATH="$HOME/bin:$PATH"`,
+        ].join('\n') + '\n', 'utf8');
+
+        const args = process.platform === 'win32'
+          ? []
+          : ['--noprofile', '--rcfile', bashrcFile, '-i'];
+
+        try {
+          const safeSize = validateTerminalSize(cols, rows);
+          ptyProcess = pty.spawn(shell, args, {
+            name: 'xterm-256color',
+            cols: safeSize.cols,
+            rows: safeSize.rows,
+            cwd: workDir,
+            env: {
+              ...process.env,
+              HOME: workDir,
+              TERM: 'xterm-256color',
+              COLORTERM: 'truecolor',
+              PATH: (process.env.PATH || '') + ':/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin',
+              LANG: process.env.LANG || 'en_US.UTF-8',
+            },
+          });
+        } catch (e) {
+          logger.error({ shell, err: e.message }, 'pty.spawn failed');
+          throw e;
+        }
       }
 
       let oscBuf = '';
@@ -522,6 +601,10 @@ app.prepare().then(() => {
 
     ws.on('close', () => {
       if (ptyProcess) { try { ptyProcess.kill(); } catch {} }
+      if (ws._containerName) {
+        // Force-remove container in case it's still running (e.g. ptyProcess kill didn't propagate)
+        execFile('docker', ['rm', '-f', ws._containerName], () => {});
+      }
       if (ws._workDir) {
         try { fs.rmSync(ws._workDir, { recursive: true, force: true }); } catch {}
       }
