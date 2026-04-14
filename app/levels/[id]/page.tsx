@@ -44,6 +44,11 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     title: "Le terminal",
     description: "Tape tes commandes Linux ici. Utilise Tab pour l'autocomplétion et ↑ pour naviguer dans l'historique.",
   },
+  {
+    target: 'terminal-clear',
+    title: "Bouton Clear",
+    description: "Clique sur « clear » pour effacer l'écran sans perdre l'historique. Si tu es bloqué après un guillemet (tu vois « > »), appuie sur Ctrl+C pour annuler la commande.",
+  },
 ];
 
 const MOBILE_TUTORIAL_STEPS: TutorialStep[] = [
@@ -61,6 +66,11 @@ const MOBILE_TUTORIAL_STEPS: TutorialStep[] = [
     target: 'level-terminal',
     title: "Le terminal",
     description: "Tape tes commandes Linux ici. Utilise Tab pour l'autocomplétion et ↑ pour l'historique.",
+  },
+  {
+    target: 'terminal-clear',
+    title: "Bouton Clear",
+    description: "Clique sur « clear » pour effacer l'écran. Si tu es bloqué après un guillemet (tu vois « > »), appuie sur Ctrl+C pour annuler.",
   },
 ];
 

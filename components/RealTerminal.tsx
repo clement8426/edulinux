@@ -54,12 +54,11 @@ export default function RealTerminal({
   const [wsStatus, setWsStatus] = useState<'connecting' | 'ready' | 'error'>('connecting');
   const [errorMsg, setErrorMsg] = useState('');
   const [notifications, setNotifications] = useState<string[]>([]);
-  /** Masque le bouton Continuer après clic ou passage auto */
+  /** Masque le bouton Continuer après clic */
   const [continueDismissed, setContinueDismissed] = useState(false);
 
-  /** Évite d'appeler onAllComplete deux fois (timer + bouton) */
+  /** Évite d'appeler onAllComplete deux fois si double-clic */
   const completionHandledRef = useRef(false);
-  const autoNavigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // track allDone in a ref so WS handlers stay in sync
   const allDoneRef = useRef(false);
 
@@ -230,20 +229,8 @@ export default function RealTerminal({
             '\x1b[1;32m┌─────────────────────────────────────────┐\x1b[0m\r\n' +
             '\x1b[1;32m│  ★  Tous les objectifs sont complétés !  │\x1b[0m\r\n' +
             '\x1b[1;32m└─────────────────────────────────────────┘\x1b[0m\r\n' +
-            '\x1b[90m  Passage automatique à la suite dans quelques secondes…\x1b[0m\r\n' +
-            '\x1b[33m  (Tu peux aussi cliquer sur « Continuer » sous le terminal.)\x1b[0m\r\n\r\n'
+            '\x1b[33m  Clique sur « Continuer » quand tu es prêt.\x1b[0m\r\n\r\n'
           );
-          if (autoNavigateTimerRef.current) {
-            clearTimeout(autoNavigateTimerRef.current);
-            autoNavigateTimerRef.current = null;
-          }
-          autoNavigateTimerRef.current = setTimeout(() => {
-            autoNavigateTimerRef.current = null;
-            if (destroyed || completionHandledRef.current) return;
-            completionHandledRef.current = true;
-            setContinueDismissed(true);
-            propsRef.current.onAllComplete?.();
-          }, 2800);
         }
 
         if (msg.type === 'flag_found') {
@@ -291,10 +278,6 @@ export default function RealTerminal({
 
     return () => {
       destroyed = true;
-      if (autoNavigateTimerRef.current) {
-        clearTimeout(autoNavigateTimerRef.current);
-        autoNavigateTimerRef.current = null;
-      }
       wsRef.current?.close();
       termRef.current?.dispose();
       termRef.current = null;
@@ -318,13 +301,8 @@ export default function RealTerminal({
     onNextStep?.();
   }, [nextStepData, onNextStep, labContainer]);
 
-  /** Passe à la suite tout de suite (annule le délai auto) */
   const handleContinueNow = useCallback(() => {
     if (completionHandledRef.current) return;
-    if (autoNavigateTimerRef.current) {
-      clearTimeout(autoNavigateTimerRef.current);
-      autoNavigateTimerRef.current = null;
-    }
     completionHandledRef.current = true;
     setContinueDismissed(true);
     onAllComplete?.();
@@ -345,6 +323,16 @@ export default function RealTerminal({
           student@edulinux — bash
         </span>
         <div className="flex items-center gap-2">
+          {/* Clear button */}
+          <button
+            data-tutorial="terminal-clear"
+            type="button"
+            title="Effacer le terminal (garde l'historique)"
+            onClick={() => termRef.current?.clear()}
+            className="text-gray-600 hover:text-gray-300 border border-white/8 hover:border-white/20 px-2 py-0.5 rounded text-xs transition-colors font-mono"
+          >
+            clear
+          </button>
           {/* Flag counter — only shown when flags are provided */}
           {flags && flags.length > 0 && (
             <span className="text-xs text-yellow-400 font-mono">
@@ -399,7 +387,7 @@ export default function RealTerminal({
       {allDone && (
         <div className="flex-shrink-0 border-t border-[#a3e635]/30 bg-[#0a0e17] px-4 py-2.5 flex items-center justify-between gap-3 animate-fadeIn">
           <span className="text-[#a3e635] text-xs font-mono min-w-0">
-            ★ Objectifs complétés — passage auto ou bouton ci-contre
+            ★ Objectifs complétés — continue quand tu veux
           </span>
           <div className="flex items-center gap-2 flex-shrink-0">
             {!continueDismissed && (
