@@ -56,6 +56,17 @@ export default function ScenariosPage() {
           </p>
         </div>
 
+        {/* Info banner */}
+        <div className="flex items-start gap-3 border border-[#a3e635]/15 bg-[#a3e635]/5 rounded-lg px-4 py-3 mb-8">
+          <span className="text-[#a3e635] text-base mt-0.5 flex-shrink-0">ℹ</span>
+          <div className="text-xs text-gray-400 leading-relaxed">
+            Les scénarios se débloquent en complétant les niveaux correspondants.{' '}
+            <Link href="/levels" className="text-[#a3e635] hover:underline">
+              Commence par les niveaux →
+            </Link>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-4 gap-px bg-white/5 rounded overflow-hidden mb-10">
           {[
@@ -128,7 +139,9 @@ export default function ScenariosPage() {
                             </div>
                             <p className="text-gray-500 text-xs leading-relaxed mb-3">{scenario.description}</p>
                             {!unlocked && scenario.prerequisites && (
-                              <p className="text-gray-700 text-xs mt-1 mb-2">{scenario.prerequisites.description}</p>
+                              <p className="text-gray-500 text-xs mt-1 mb-2">
+                                🔒 Requis : {scenario.prerequisites.description}
+                              </p>
                             )}
                             <div className="flex flex-wrap items-center gap-3 text-xs">
                               <span className={`border px-2 py-0.5 rounded ${CAT_COLOR[scenario.category] || 'text-gray-400 border-gray-400/20'}`}>
