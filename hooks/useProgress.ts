@@ -136,8 +136,11 @@ export function useProgress() {
     save(p);
   };
 
-  const isLevelUnlocked    = (levelId: number)   => levelId <= progress.currentLevel;
-  const isLevelCompleted   = (levelId: number)   => progress.completedLevels.includes(levelId);
+  // Lire depuis latestRef.current (synchrone) plutôt que progress (React state)
+  // pour éviter une fenêtre de race condition quand completeLevel() + router.push()
+  // sont appelés dans le même tick — le state React n'est pas encore appliqué.
+  const isLevelUnlocked    = (levelId: number)   => levelId <= latestRef.current.currentLevel;
+  const isLevelCompleted   = (levelId: number)   => latestRef.current.completedLevels.includes(levelId);
   const isScenarioUnlocked = (scenarioId: number, requiredLevels?: number[]): boolean => {
     if (!requiredLevels || requiredLevels.length === 0) {
       // Fallback: old behavior
