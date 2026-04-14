@@ -3,6 +3,7 @@ import { levels } from '@/data/levels';
 import { scenarios } from '@/data/scenarios';
 import Footer from '@/components/Footer';
 import UserMenu from '@/components/UserMenu';
+import HeroCta from '@/components/HeroCta';
 
 // Computed from data at build time
 const totalLevels = levels.length;
@@ -70,12 +71,7 @@ export default function Home() {
         </p>
 
         <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-14 sm:mb-20">
-          <Link
-            href="/levels"
-            className="bg-[#a3e635] text-black font-bold px-6 py-3 rounded text-sm hover:bg-[#bef264] transition-colors"
-          >
-            Commencer — Niveau 01
-          </Link>
+          <HeroCta />
           <Link
             href="/scenarios"
             className="border border-white/10 text-gray-400 hover:text-white hover:border-white/30 px-6 py-3 rounded text-sm transition-colors"
