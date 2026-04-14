@@ -153,7 +153,8 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
     if (nextStepIdx === null) return;
     setCurrentStepIdx(nextStepIdx);
     setStepAllDone(false);
-    setTerminalKey(k => k + 1);
+    // Pas de setTerminalKey ici — la transition est gérée par le message
+    // next_step sur le WebSocket existant (pas besoin de remonter le terminal)
   }, [nextStepIdx]);
 
   const jumpToStep = useCallback((idx: number) => {
@@ -378,14 +379,11 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
         )}
       </div>
 
-      {/* Next step button */}
+      {/* Le passage à l'étape suivante se fait via le bouton dans la barre du terminal */}
       {stepAllDone && nextStep && (
-        <button
-          onClick={handleNextStep}
-          className="w-full bg-[#a3e635] text-black font-bold py-2.5 rounded text-sm hover:bg-[#bef264] transition-colors"
-        >
-          {nextStep.title} →
-        </button>
+        <div className="border border-[#a3e635]/20 bg-[#a3e635]/5 rounded p-3 text-xs text-[#a3e635]">
+          ★ Étape validée — clique sur <span className="font-bold">Étape suivante →</span> dans le terminal
+        </div>
       )}
     </div>
   );
@@ -529,7 +527,7 @@ export default function ScenarioPage({ params }: { params: Promise<{ id: string 
         {/* Terminal */}
         <div data-tutorial="scenario-terminal" className="flex-1 min-w-0 overflow-hidden p-2 lg:p-3">
           <RealTerminal
-            key={`${scenarioId}-${currentStepIdx}-${terminalKey}`}
+            key={`${scenarioId}-${terminalKey}`}
             id={scenarioId * 100 + currentStep.id}
             kind="scenario"
             fileSystem={currentStep.fileSystem as Record<string, unknown> ?? {}}
