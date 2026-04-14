@@ -58,7 +58,10 @@ export default function ScenariosPage() {
 
         {/* Info banner */}
         <div className="flex items-start gap-3 border border-[#a3e635]/15 bg-[#a3e635]/5 rounded-lg px-4 py-3 mb-8">
-          <span className="text-[#a3e635] text-base mt-0.5 flex-shrink-0">ℹ</span>
+          <svg className="w-4 h-4 text-[#a3e635] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <circle cx="12" cy="12" r="10" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01" />
+          </svg>
           <div className="text-xs text-gray-400 leading-relaxed">
             Les scénarios se débloquent en complétant les niveaux correspondants.{' '}
             <Link href="/levels" className="text-[#a3e635] hover:underline">
@@ -139,8 +142,11 @@ export default function ScenariosPage() {
                             </div>
                             <p className="text-gray-500 text-xs leading-relaxed mb-3">{scenario.description}</p>
                             {!unlocked && scenario.prerequisites && (
-                              <p className="text-gray-500 text-xs mt-1 mb-2">
-                                🔒 Requis : {scenario.prerequisites.description}
+                              <p className="text-gray-500 text-xs mt-1 mb-2 flex items-center gap-1.5">
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                Requis : {scenario.prerequisites.description}
                               </p>
                             )}
                             <div className="flex flex-wrap items-center gap-3 text-xs">
