@@ -123,7 +123,7 @@ export const levels01_10: Level[] = [
     difficulty: 'beginner',
     category: "Permissions",
     objective: "Utiliser chmod pour débloquer un fichier, puis le lire",
-    description: "Les fichiers ont des permissions. `chmod +r fichier` ajoute la permission de lecture. Sans elle, `cat` affiche une erreur.",
+    description: "Les fichiers ont des permissions. `chmod +r fichier` ajoute la permission de lecture. Sans elle, `cat` affiche `Permission denied`. Utilise `ls -la` pour voir les permissions actuelles.",
     commands: ['chmod', 'cat', 'ls'],
     hints: [
       "`ls -la` pour voir les permissions (la colonne `-rw-r--r--`).",
@@ -131,7 +131,7 @@ export const levels01_10: Level[] = [
       "Ensuite `cat locked.txt` pour lire le contenu débloqué."
     ],
     fileSystem: {
-      'locked.txt': 'Contenu secret : PASSWORD_IS_CHMOD_MASTER'
+      'locked.txt': { content: 'Contenu secret : PASSWORD_IS_CHMOD_MASTER', mode: 0o000 }
     },
     validation: [
       { type: 'command', value: 'chmod +r locked.txt', description: 'Rendre le fichier lisible avec chmod' },

@@ -46,6 +46,13 @@ function createFiles(baseDir, fileSystem) {
         if (key.endsWith('.sh') || key.endsWith('.py') || key.endsWith('.pl') || inBin) {
           fs.chmodSync(fullPath, 0o755);
         }
+      } else if (typeof value === 'object' && value !== null && 'content' in value && typeof value.content === 'string') {
+        // { content: string, mode: number } — fichier avec permissions explicites
+        const content = value.content.endsWith('\n') ? value.content : value.content + '\n';
+        fs.writeFileSync(fullPath, content, 'utf8');
+        if (typeof value.mode === 'number') {
+          fs.chmodSync(fullPath, value.mode);
+        }
       } else if (typeof value === 'object' && value !== null) {
         fs.mkdirSync(fullPath, { recursive: true });
         createFiles(fullPath, value);

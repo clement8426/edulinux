@@ -12,8 +12,14 @@ export interface Level {
   story?: string;
 }
 
+export interface FileEntry {
+  content: string;
+  /** Permissions octal (ex: 0o000 pour illisible, 0o755 pour exécutable) */
+  mode: number;
+}
+
 export interface FileSystemStructure {
-  [key: string]: string | FileSystemStructure;
+  [key: string]: string | FileEntry | FileSystemStructure;
 }
 
 export interface ValidationRule {
