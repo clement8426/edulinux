@@ -44,6 +44,22 @@ function LoginForm() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) { setError('Entre ton email pour recevoir le lien de réinitialisation.'); return; }
+    setLoading(true);
+    setError('');
+    const origin = window.location.origin;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?type=recovery`,
+    });
+    if (error) {
+      setError('Impossible d\'envoyer le lien. Vérifie l\'email.');
+    } else {
+      setInfo('Lien de réinitialisation envoyé ! Vérifie ta boîte mail.');
+    }
+    setLoading(false);
+  };
+
   const handleMagicLink = async () => {
     if (!email) { setError('Entre ton email pour recevoir un lien magique.'); return; }
     setLoading(true);
@@ -174,6 +190,15 @@ function LoginForm() {
               className="w-full text-xs text-gray-500 hover:text-gray-300 transition-colors py-1"
             >
               Recevoir un lien magique par email →
+            </button>
+
+            {/* Forgot password */}
+            <button
+              onClick={handleForgotPassword}
+              disabled={loading}
+              className="w-full text-xs text-gray-600 hover:text-gray-400 transition-colors py-1"
+            >
+              Mot de passe oublié ?
             </button>
           </div>
 
